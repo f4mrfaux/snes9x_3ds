@@ -253,6 +253,9 @@ typedef union {
 } SGPURenderState;
 
 _Static_assert(sizeof(SGPURenderState) == 8, "SGPURenderState is not 64-bits!");
+_Static_assert((int)TARGET_SNES_MAIN == (int)SNES_MAIN, "Target/Texture ID enum mismatch: SNES_MAIN");
+_Static_assert((int)TARGET_SNES_SUB == (int)SNES_SUB, "Target/Texture ID enum mismatch: SNES_SUB");
+_Static_assert((int)TARGET_SNES_DEPTH == (int)SNES_DEPTH, "Target/Texture ID enum mismatch: SNES_DEPTH");
 
 typedef struct
 {

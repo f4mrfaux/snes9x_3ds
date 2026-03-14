@@ -56,7 +56,7 @@ void setDepthBufferByTex(C3D_RenderTarget* target, C3D_Tex* depthTex)
     if (!target || !depthTex) return;
 
 	C3D_FrameBufDepth(&target->frameBuf, depthTex->data, GPU_RB_DEPTH24_STENCIL8);
-	target->ownsDepth = true;
+	target->ownsDepth = false;  // depth memory owned by SNES_DEPTH texture, not this target
 }
 
 bool impl3dsInitialize()
