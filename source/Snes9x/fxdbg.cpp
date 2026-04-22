@@ -67,7 +67,9 @@ void FxPipeString(char * pvString)
     }
     /* Check for 'move' instruction */
     else if( PIPE >= 0x10 && PIPE <= 0x1f && TF(B) )
-	sprintf(p, "move r%d,r%d", USEX8(PIPE & 0x0f), GSU.pvSreg - GSU.avReg);
+	// Wyatt-James GSU series changed pvSreg / pvDreg from uint32*
+	// (pointing into avReg[]) to u8 indices — use the index directly.
+	sprintf(p, "move r%d,r%d", USEX8(PIPE & 0x0f), GSU.pvSreg);
     /* Check for 'ibt', 'lms' or 'sms' */
     else if( PIPE >= 0xa0 && PIPE <= 0xaf )
     {
@@ -79,7 +81,8 @@ void FxPipeString(char * pvString)
     }
     /* Check for 'moves' */
     else if( PIPE >= 0xb0 && PIPE <= 0xbf && TF(B) )
-	sprintf(p, "moves r%d,r%d", GSU.pvDreg - GSU.avReg, USEX8(PIPE & 0x0f) );
+	// (Wyatt-James change: pvDreg is now a u8 index directly.)
+	sprintf(p, "moves r%d,r%d", GSU.pvDreg, USEX8(PIPE & 0x0f) );
     /* Check for 'iwt', 'lm' or 'sm' */
     else if( PIPE >= 0xf0 )
     {
