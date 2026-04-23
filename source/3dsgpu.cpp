@@ -320,6 +320,14 @@ void gpu3dsSetShaderAndUniforms(SGPURenderState *state, u64 diff, bool targetUpd
             if (GPU3DS.mosaicScratchActive && state->target == TARGET_SNES_MAIN) {
                 targetTexId = SNES_MOSAIC_SCRATCH;
             }
+            // Stereo right-eye redirect: same shape as the texture-bind
+            // redirect in gpu3dsApplyRenderState. Currently MAIN and MAIN_R
+            // are both 256x256 RGBA8 so the projection upload is a no-op,
+            // but a future per-eye-resolution change would silently corrupt
+            // the right eye without this.
+            if (GPU3DS.stereoRightEye && targetTexId == SNES_MAIN) {
+                targetTexId = SNES_MAIN_R;
+            }
 
             SGPUTexture *targetFromTex = &GPU3DS.textures[targetTexId];
             GPU_SHADER_TYPE projShader = state->shader == SPROGRAM_SCREEN ? GPU_VERTEX_SHADER : GPU_GEOMETRY_SHADER;

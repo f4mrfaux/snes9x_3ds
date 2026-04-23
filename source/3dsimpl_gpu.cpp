@@ -431,8 +431,14 @@ void gpu3dsDrawTiledLayer(SLayer *layer, u16 *indices, int from, int to) {
 // pixel-block "mosaic" look. We go through SPROGRAM_SCREEN (screen
 // vertex shader) with VBO_SCREEN; the mosaicScratchActive flag is
 // already cleared by the caller, so TARGET_SNES_MAIN now points at
-// the real main texture.
-static void gpu3dsDrawMosaicComposite(int mosaicSize)
+// the real main texture (or SNES_MAIN_R via the right-eye redirect).
+//
+// xOffsetPixels translates the destination quad horizontally — used
+// to apply per-eye stereo separation since SPROGRAM_SCREEN bypasses
+// the geometry shader (where the regular per-tile stereo offset is
+// applied). The scratch should be rendered with stereoOffset == 0 so
+// the offset isn't double-applied.
+static void gpu3dsDrawMosaicComposite(int mosaicSize, float xOffsetPixels = 0.0f)
 {
     u32 vpW = (256 + mosaicSize - 1) / mosaicSize;
     u32 vpH = (224 + mosaicSize - 1) / mosaicSize;
@@ -444,7 +450,7 @@ static void gpu3dsDrawMosaicComposite(int mosaicSize)
     int startFrom = list->from + list->count;
 
     gpu3dsAddSimpleQuadVertexes(
-        0, 0, 256, 224,
+        xOffsetPixels, 0, 256.0f + xOffsetPixels, 224,
         0, 0, (float)vpW, (float)vpH,
         0);
 
@@ -688,19 +694,31 @@ void gpu3dsDrawLayers(SLayerList *list) {
                 u32 bufferOffset = layer->bufferOffset + layer->verticesByTarget[TARGET_SNES_SUB];
                 u16 *indices = (u16 *)list->ibo + bufferOffset;
 
-                // Mosaic only applies to BG0-BG3 with the per-BG enable bit set.
-                // The composite step uses SPROGRAM_SCREEN and renders a non-stereo
-                // full-screen quad — for a mosaic'd layer the per-tile stereo offset
-                // is effectively absorbed into the scratch upsampling, so the layer
-                // appears identical between eyes. Acceptable v1 behavior; left as a
-                // documented interaction for future per-eye scratch passes.
                 bool doMosaic = mosaicFrameActive && id <= LAYER_BG3 && (mosaicMask & (1 << id));
                 if (doMosaic) {
+                    // Per-eye stereo for mosaic'd BG layers: the geometry-shader
+                    // stereo offset is set to 0 for the scratch render (so the
+                    // scratch is the same content for both eyes), then the
+                    // composite quad's destination X is translated per eye.
+                    // This gives pixel-precise stereo separation independent of
+                    // the mosaic block size, and avoids the GPU batching ambiguity
+                    // around whether two consecutive scratch renders survive long
+                    // enough to be sampled by their respective composites.
+                    float compositeXOffsetPixels = 0.0f;
+                    if (stereoEnabled && id < LAYER_OBJ) {
+                        LayerStereo lsm = resolveLayerStereo(id);
+                        // Multiplying by 128 cancels the geometry-shader's clip-space
+                        // (2/256) factor so the result is in 256-wide pixel units.
+                        compositeXOffsetPixels =
+                            lsm.depthFactor * lsm.strength * iod * eyeSign * stretchCompensation;
+                    }
+
+                    gpu3dsSetStereoOffset(0.0f); // override for scratch render
                     gpu3dsBeginMosaicPass(mosaicSize);
                     gpu3dsDrawTiledLayer(layer, indices, from, to);
                     gpu3dsEndMosaicPass();
 
-                    gpu3dsDrawMosaicComposite(mosaicSize);
+                    gpu3dsDrawMosaicComposite(mosaicSize, compositeXOffsetPixels);
 
                     // Composite left us on SPROGRAM_SCREEN state fields;
                     // restore the tile-path target for subsequent layers (still
@@ -715,8 +733,13 @@ void gpu3dsDrawLayers(SLayerList *list) {
         }
     }
 
-    // Reset stereo state
+    // Reset stereo + mosaic state defensively. mosaicScratchActive should
+    // already be false (gpu3dsEndMosaicPass clears it), but a future early-
+    // return inside the layer loop would leave it set and corrupt later
+    // TARGET_SNES_MAIN draws — silent, frame-spanning, no log. Belt and
+    // braces.
     GPU3DS.stereoRightEye = false;
+    GPU3DS.mosaicScratchActive = false;
     gpu3dsSetStereoOffset(0.0f);
 }
 
