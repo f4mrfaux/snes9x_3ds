@@ -1,8 +1,8 @@
-# Snes9x for 3DS
+# Snes9x for 3DS — Stereoscopic Edition
 
 ## Overview
 
-This project is a fork of the legacy snes9x_3ds codebase by [bubble2k](https://github.com/bubble2k16/snes9x_3ds) and continues that work with a modernized architecture and improved user experience.
+This is **M00NR00STER's stereoscopic 3D fork** of [matbo87/snes9x_3ds](https://github.com/matbo87/snes9x_3ds), which is itself a fork of the legacy [bubble2k/snes9x_3ds](https://github.com/bubble2k16/snes9x_3ds) codebase. This edition adds full per-layer stereoscopic 3D rendering for the 3DS's parallax barrier display — slide the 3D slider up and SNES backgrounds, sprites and Mode 7 planes gain real depth — alongside performance work and other quality-of-life additions on top of matbo87's modernized architecture.
 It builds with current devkitARM, libctru and citro3d releases (as of March 2026). Optional assets are available in the dedicated asset repository: [snes9x_3ds-assets](https://github.com/matbo87/snes9x_3ds-assets).
 
 It works on all 2DS and 3DS models. Old 2DS/3DS can struggle with demanding games (e.g. Super FX titles like Star Fox), but many SNES games still run well.
@@ -202,7 +202,9 @@ See:
 
 ## Credits
 
-* bubble2k for [snes9x_3ds](https://github.com/bubble2k16/snes9x_3ds)
+* **bubble2k** for the original [snes9x_3ds](https://github.com/bubble2k16/snes9x_3ds) — the foundation this entire lineage stands on
+* **matbo87** for [snes9x_3ds](https://github.com/matbo87/snes9x_3ds) — the citro3d rendering overhaul, draw-call batching, and modernized architecture this fork builds on top of
+* **M00NR00STER** (f4mrfaux) — stereoscopic 3D rendering, per-tile BG depth, per-priority OBJ depth, Mode 7 perspective stereo, Mode 7 char→slot reverse-index perf, mosaic + stereo per-eye composite, and the unified-build integration work for this Stereoscopic Edition
 * ramzinouri for [snes9x_3ds fork](https://github.com/ramzinouri/snes9x_3ds)
 * willjow for [snes9x_3ds fork](https://github.com/willjow/snes9x_3ds)
 * Wyatt-James for warning/safety/audio fixes adapted from [Wyatt-James/snes9x_3ds](https://github.com/Wyatt-James/snes9x_3ds):
