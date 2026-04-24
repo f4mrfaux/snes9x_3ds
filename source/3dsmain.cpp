@@ -737,6 +737,9 @@ void makeOptionMenu(std::vector<SMenuItem>& items, std::vector<SMenuTab>& menuTa
 
     AddMenuGauge(items, "  Game Screen BG Opacity"_s, 1, settings3DS.GameScreenBg != Setting::AssetMode::None ? OPACITY_STEPS : GAUGE_DISABLED_VALUE, settings3DS.GameScreenBgOpacity,
                     []( int val ) { if (CheckAndUpdate( settings3DS.GameScreenBgOpacity, val )) menu3dsSetScreenDirty(); });
+
+    AddMenuGauge(items, "  Game Screen BG 3D Depth"_s, 0, settings3DS.GameScreenBg != Setting::AssetMode::None ? GAMESCREEN_BG_DEPTH_MAX : GAUGE_DISABLED_VALUE, settings3DS.GameScreenBgDepth,
+                    []( int val ) { if (CheckAndUpdate( settings3DS.GameScreenBgDepth, val )) menu3dsSetScreenDirty(); });
                         
     int secondScreenPickerId = 1000;
     AddMenuPicker(items, "  Second Screen BG"_s, "Max 400x240px image shown on the second screen.\npath = \"/3ds/snes9x3ds/backgrounds/second_screen/\".\nTrimmed filename (e.g. Axelay.png) or _default.png."_s,
@@ -1176,6 +1179,9 @@ bool settingsReadWriteFullListGlobal(bool writeMode)
     config3dsReadWriteInt32(stream, writeMode, "SecondScreenBgOpacity=%d\n", &settings3DS.SecondScreenBgOpacity, 1, OPACITY_STEPS);
     config3dsReadWriteEnum(stream, writeMode, "GameScreenBg=%d\n", &settings3DS.GameScreenBg, 0, 3);
     config3dsReadWriteInt32(stream, writeMode, "GameScreenBgOpacity=%d\n", &settings3DS.GameScreenBgOpacity, 1, OPACITY_STEPS);
+    if (writeMode || detectedConfigVersion >= 1.7f) {
+        config3dsReadWriteInt32(stream, writeMode, "GameScreenBgDepth=%d\n", &settings3DS.GameScreenBgDepth, 0, GAMESCREEN_BG_DEPTH_MAX);
+    }
     config3dsReadWriteEnum(stream, writeMode, "Disable3DSlider=%d\n", &settings3DS.Disable3DSlider, 0, 1);
     config3dsReadWriteEnum(stream, writeMode, "Font=%d\n", &settings3DS.Font, 0, 2);
     config3dsReadWriteEnum(stream, writeMode, "LogFileEnabled=%d\n", &settings3DS.LogFileEnabled, 0, 1);

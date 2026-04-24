@@ -38,6 +38,12 @@
 #define OPACITY_STEPS               20
 #define GAUGE_DISABLED_VALUE        -1
 
+// Max depth (pixels of parallax at 3D slider = 1.0) for the Game Screen
+// background image. The gauge value IS the resulting parallax in pixels;
+// the slider scales it down linearly. Cap derived from comfortable viewing
+// distance on the 3DS top screen (~5% of 400px).
+#define GAMESCREEN_BG_DEPTH_MAX     20
+
 #define MENU_ENTRY_CONTEXT_MENU     -2
 #define MENU_CONTINUE_GAME          -3
 
@@ -147,6 +153,7 @@ typedef struct {
     bool                GameOverlayAutoFit;
     Setting::AssetMode  GameScreenBg;
     int                 GameScreenBgOpacity;     // 20 - Maxium opacity
+    int                 GameScreenBgDepth;       // 0 - GAMESCREEN_BG_DEPTH_MAX; pixels of parallax at 3D slider = 1.0
     Setting::AssetMode  SecondScreenBg;
     int                 SecondScreenBgOpacity;
 
