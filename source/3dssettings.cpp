@@ -38,6 +38,7 @@ void settings3dsResetGlobalDefaults() {
     settings3DS.GameOverlayAutoFit = false;
     settings3DS.GameScreenBg = Setting::AssetMode::Adaptive;
     settings3DS.GameScreenBgOpacity = OPACITY_STEPS / 2;
+    settings3DS.GameScreenBgDepth = 3;          // matches pre-1.61 IOD behavior (3 px parallax at slider = 1.0)
     settings3DS.SecondScreenBg = Setting::AssetMode::Adaptive;
     settings3DS.SecondScreenBgOpacity = OPACITY_STEPS / 2;
 

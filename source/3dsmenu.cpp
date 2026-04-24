@@ -123,22 +123,25 @@ bool menu3dsHasHighlightableItems(SMenuTab *currentTab) {
 
 // enable/disable gauge
 // find related item via id
-// gauge item currently needs to follow related menu item (ideally it would have something like relatedId attribute)
+// gauges currently need to follow related menu item (ideally it would have something like relatedId attribute)
+// All consecutive gauges immediately after the related item are toggled together
+// (e.g. GameScreenBgOpacity + GameScreenBgDepth gauges both follow the GameScreenBg picker)
 void menu3dsUpdateGaugeVisibility(SMenuTab *currentTab, int id, int value)
 {
-    size_t gi = 0;
+    size_t startIdx = 0;
     for (size_t i = 0; i < currentTab->MenuItems.size(); i++)
     {
-        // assumption: gauge item follows related menu item
-        // (e.g. SecondScreenBgOpacity gauge follows SecondScreenBg picker)
         if (currentTab->MenuItems[i].GaugeMaxValue == id) {
-            gi = i + 1;
+            startIdx = i + 1;
             break;
         }
     }
-    
-    if (gi && currentTab->MenuItems[gi].Type == MenuItemType::Gauge)
-        currentTab->MenuItems[gi].GaugeMaxValue = value;
+
+    for (size_t i = startIdx; i > 0 && i < currentTab->MenuItems.size(); i++) {
+        if (currentTab->MenuItems[i].Type != MenuItemType::Gauge)
+            break;
+        currentTab->MenuItems[i].GaugeMaxValue = value;
+    }
 }
 
 void menu3dsDrawItems(
