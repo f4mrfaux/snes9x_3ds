@@ -285,6 +285,7 @@ typedef struct
     // SNES_MOSAIC_SCRATCH so a BG layer can be rendered at reduced
     // resolution and composited back with GPU_NEAREST upsampling.
     bool                        mosaicScratchActive;
+    SGPU_STATE                  mosaicSavedDepthTest;
 } SGPU3DS;
 
 extern SGPU3DS GPU3DS;

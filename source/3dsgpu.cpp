@@ -947,20 +947,34 @@ void gpu3dsBeginMosaicPass(int mosaicSize)
 {
     GPU3DS.mosaicScratchActive = true;
 
-    // Route TARGET_SNES_MAIN to the scratch and clear it. The clear is
-    // deliberate: each mosaic pass renders exactly one BG, and the
-    // composite quad then samples the result — any leftover pixels
-    // from a previous BG's mosaic pass would leak through transparency.
+    // Phase 1 diagnostic: force depth test off for the BG mosaic render.
+    // SNES_MOSAIC_SCRATCH shares SNES_DEPTH with SNES_MAIN/SNES_SUB
+    // (3dsimpl.cpp); depth-enabled draws at the reduced viewport would
+    // write garbage into the shared depth buffer. Save+restore the prior
+    // state so the Begin/End pair is transparent to the caller.
+    GPU3DS.mosaicSavedDepthTest = GPU3DS.currentRenderState.depthTest;
+    GPU3DS.currentRenderState.depthTest = SGPU_STATE_DISABLED;
+
+    // Route TARGET_SNES_MAIN to the scratch and clear it bright red as a
+    // Phase 1 diagnostic — this lets the HW screenshot disambiguate
+    // whether the composite reaches SNES_MAIN at the expected scale.
     GPU3DS.appliedRenderState.target = TARGET_UNSET;
     gpu3dsSetRenderTargetToTexture(TARGET_SNES_MAIN);
-    C3D_RenderTargetClear(GPU3DS.textures[SNES_MOSAIC_SCRATCH].target, C3D_CLEAR_ALL, 0, 0);
+    C3D_RenderTargetClear(GPU3DS.textures[SNES_MOSAIC_SCRATCH].target, C3D_CLEAR_COLOR, 0xFF0000FF, 0);
 
     gpu3dsSetMosaicViewport(mosaicSize);
+
+    // C3D_FrameDrawOn (called via gpu3dsSetRenderTargetToTexture) auto-resets
+    // the viewport to the bound target's full size. Claim the target as
+    // already applied so subsequent BG draws skip the rebind and keep the
+    // reduced vpW x vpH viewport.
+    GPU3DS.appliedRenderState.target = TARGET_SNES_MAIN;
 }
 
 void gpu3dsEndMosaicPass()
 {
     GPU3DS.mosaicScratchActive = false;
+    GPU3DS.currentRenderState.depthTest = GPU3DS.mosaicSavedDepthTest;
     GPU3DS.appliedRenderState.target = TARGET_UNSET;
 }
 

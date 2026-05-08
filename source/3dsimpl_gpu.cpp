@@ -333,6 +333,7 @@ static void gpu3dsDrawMosaicComposite(int mosaicSize)
     SGPU_TEXTURE_ID savedTexBind = GPU3DS.currentRenderState.textureBind;
     SGPU_TEX_ENV savedTexEnv = GPU3DS.currentRenderState.textureEnv;
     SGPU_STATE savedDepthTest = GPU3DS.currentRenderState.depthTest;
+    SGPU_ALPHA_TEST savedAlphaTest = GPU3DS.currentRenderState.alphaTest;
     SGPU_ALPHA_BLENDINGMODE savedBlend = GPU3DS.currentRenderState.alphaBlending;
 
     GPU3DS.currentRenderState.shader = SPROGRAM_SCREEN;
@@ -340,6 +341,14 @@ static void gpu3dsDrawMosaicComposite(int mosaicSize)
     GPU3DS.currentRenderState.textureBind = SNES_MOSAIC_SCRATCH;
     GPU3DS.currentRenderState.textureEnv = TEX_ENV_REPLACE_TEXTURE0;
     GPU3DS.currentRenderState.depthTest = SGPU_STATE_DISABLED;
+    // Phase 1 diagnostic: discard truly-transparent scratch pixels
+    // (textureAlpha=0 from palette index 0) and REPLACE-write opaque ones.
+    // Alpha-blend is wrong here because BG tiles are drawn into the scratch
+    // with vertex-alpha = ALPHA_ZERO/0.5/1.0 (color-math encoding from
+    // gfxhw.cpp); src*srcA+dst*(1-srcA) with srcA=1/255 multiplies opaque
+    // pixels into invisibility on SNES_MAIN. Alpha-test discards only true
+    // transparent (srcA=0), and REPLACE writes scratch RGB+A directly.
+    GPU3DS.currentRenderState.alphaTest = ALPHA_TEST_NE_ZERO;
     GPU3DS.currentRenderState.alphaBlending = ALPHA_BLENDING_DISABLED;
 
     gpu3dsDraw(list, NULL, 6, startFrom);
@@ -349,6 +358,7 @@ static void gpu3dsDrawMosaicComposite(int mosaicSize)
     GPU3DS.currentRenderState.textureBind = savedTexBind;
     GPU3DS.currentRenderState.textureEnv = savedTexEnv;
     GPU3DS.currentRenderState.depthTest = savedDepthTest;
+    GPU3DS.currentRenderState.alphaTest = savedAlphaTest;
     GPU3DS.currentRenderState.alphaBlending = savedBlend;
 }
 
