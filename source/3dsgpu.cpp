@@ -320,10 +320,21 @@ void gpu3dsSetShaderAndUniforms(SGPURenderState *state, u64 diff, bool targetUpd
             C3D_Mtx projection = (screen == GFX_TOP) ? GPU3DS.projectionTopScreen : GPU3DS.projectionBottomScreen;
             C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, GPU3DS.shaderULocs[ULOC_PROJECTION], &projection);
         } else {
-            SGPUTexture *targetFromTex = &GPU3DS.textures[(SGPU_TEXTURE_ID)state->target];
+            SGPU_TEXTURE_ID targetTexId = (SGPU_TEXTURE_ID)state->target;
+
+            // Mosaic redirect for uniform upload: main-screen projection
+            // comes from the scratch texture (same 256x256 dim, so the
+            // projection matches — this is really just to stay consistent
+            // with the gpu3dsSetRenderTargetToTexture redirect).
+            if (GPU3DS.mosaicScratchActive && state->target == TARGET_SNES_MAIN) {
+                targetTexId = SNES_MOSAIC_SCRATCH;
+            }
+
+            SGPUTexture *targetFromTex = &GPU3DS.textures[targetTexId];
+            GPU_SHADER_TYPE projShader = state->shader == SPROGRAM_SCREEN ? GPU_VERTEX_SHADER : GPU_GEOMETRY_SHADER;
 
             if (targetFromTex->tex.dim != GPU3DS.currentRenderTargetDim) {
-                C3D_FVUnifMtx4x4(GPU_GEOMETRY_SHADER, GPU3DS.shaderULocs[ULOC_PROJECTION], &targetFromTex->projection);
+                C3D_FVUnifMtx4x4(projShader, GPU3DS.shaderULocs[ULOC_PROJECTION], &targetFromTex->projection);
                 GPU3DS.currentRenderTargetDim = targetFromTex->tex.dim;
             }
         }
@@ -911,7 +922,63 @@ void gpu3dsSetRenderTargetToTexture(SGPU_TARGET_ID target)
 {
     SGPUTexture *texture = &GPU3DS.textures[target];
 
+    // Mosaic redirect: main-screen draws land in the scratch so the BG
+    // can be rendered at reduced resolution and composited back. Scratch
+    // is a texture id, not a SGPU_TARGET_ID — the BW_TARGET bitfield is
+    // full.
+    if (GPU3DS.mosaicScratchActive && target == TARGET_SNES_MAIN) {
+        texture = &GPU3DS.textures[SNES_MOSAIC_SCRATCH];
+    }
+
     C3D_FrameDrawOn(texture->target);
+}
+
+void gpu3dsSetMosaicViewport(int mosaicSize)
+{
+    if (mosaicSize <= 1) {
+        C3D_SetViewport(0, 0, 256, 256);
+        return;
+    }
+
+    u32 vpW = (256 + mosaicSize - 1) / mosaicSize;
+    u32 vpH = (224 + mosaicSize - 1) / mosaicSize;
+
+    C3D_SetViewport(0, 0, vpW, vpH);
+}
+
+void gpu3dsBeginMosaicPass(int mosaicSize)
+{
+    GPU3DS.mosaicScratchActive = true;
+
+    // Phase 1 diagnostic: force depth test off for the BG mosaic render.
+    // SNES_MOSAIC_SCRATCH shares SNES_DEPTH with SNES_MAIN/SNES_SUB
+    // (3dsimpl.cpp); depth-enabled draws at the reduced viewport would
+    // write garbage into the shared depth buffer. Save+restore the prior
+    // state so the Begin/End pair is transparent to the caller.
+    GPU3DS.mosaicSavedDepthTest = GPU3DS.currentRenderState.depthTest;
+    GPU3DS.currentRenderState.depthTest = SGPU_STATE_DISABLED;
+
+    // Route TARGET_SNES_MAIN to the scratch and clear it bright red as a
+    // Phase 1 diagnostic — this lets the HW screenshot disambiguate
+    // whether the composite reaches SNES_MAIN at the expected scale.
+    GPU3DS.appliedRenderState.target = TARGET_UNSET;
+    gpu3dsSetRenderTargetToTexture(TARGET_SNES_MAIN);
+    C3D_RenderTargetClear(GPU3DS.textures[SNES_MOSAIC_SCRATCH].target, C3D_CLEAR_COLOR, 0xFF0000FF, 0);
+
+    gpu3dsSetMosaicViewport(mosaicSize);
+
+    // C3D_FrameDrawOn (called via gpu3dsSetRenderTargetToTexture) auto-resets
+    // the viewport to the bound target's full size. Claim the target as
+    // already applied so subsequent BG draws skip the rebind and keep the
+    // reduced vpW x vpH viewport.
+    GPU3DS.appliedRenderState.target = TARGET_SNES_MAIN;
+}
+
+void gpu3dsEndMosaicPass()
+{
+    GPU3DS.mosaicScratchActive = false;
+    GPU3DS.currentRenderState.depthTest = GPU3DS.mosaicSavedDepthTest;
+    GPU3DS.appliedRenderState.target = TARGET_UNSET;
 }
 
 void gpu3dsBindTexture(SGPU_TEXTURE_ID textureId)
