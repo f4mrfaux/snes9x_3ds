@@ -38,11 +38,14 @@ static bool isReal3DS() {
 //---------------------------------------------------------
 // Returns the inter-ocular distance in pixels based on
 // the 3D slider position. Returns 0 when slider is off.
+//
+// The cap is the per-config `GameScreenBgDepth` gauge
+// (pixels of parallax at slider = 1.0).
 //---------------------------------------------------------
 float gpu3dsGetIOD()
 {
     float sliderVal = osGet3DSliderState();
-    return sliderVal * IOD_MAX_PIXELS;
+    return sliderVal * (float)settings3DS.GameScreenBgDepth;
 }
 
 bool gpu3dsIs3DAvailable()
