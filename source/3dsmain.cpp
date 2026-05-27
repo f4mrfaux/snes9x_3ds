@@ -538,7 +538,18 @@ void makeEmulatorMenu(std::vector<SMenuItem>& items, std::vector<SMenuTab>& menu
         []( int val ) { if ( val == 0 ) { GPU3DS.emulatorState = EMUSTATE_END; } });
 
     AddMenuHeader2(items, ""_s);
-    std::string info = std::string(settings3dsGetAppVersion("  Snes9x for 3DS v")) + " \x0b7 github.com/matbo87/snes9x_3ds";
+    // f4mrfaux Stereoscopic Edition: keep the honest upstream base version (from
+    // resources/AppInfo, e.g. 1.60.2) and append the git-derived edition stamp + our fork.
+    // Date/sha come from the Makefile as plain tokens; the human formatting lives here
+    // (keeps spaces/parens out of the -D value, which the build shell can't handle).
+#ifndef STEREO_BUILD_DATE_STR
+#define STEREO_BUILD_DATE_STR "unknown"
+#endif
+#ifndef STEREO_GIT_SHA_STR
+#define STEREO_GIT_SHA_STR "unknown"
+#endif
+    std::string info = std::string(settings3dsGetAppVersion("  Snes9x for 3DS v"))
+        + " \x0b7 Stereo Edition " STEREO_BUILD_DATE_STR " (g" STEREO_GIT_SHA_STR ") \x0b7 github.com/f4mrfaux/snes9x_3ds";
     AddMenuDisabledOption(items, info);
 }
 

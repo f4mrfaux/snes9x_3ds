@@ -64,6 +64,12 @@ APP_VERSION_MINOR := $(shell echo $(APP_VERSION_MINOR) | cut -c1-3)
 APP_VERSION_MICRO := $(shell echo $(APP_VERSION_MICRO) | cut -c1-3)
 APP_ROMFS         := $(TOPDIR)/$(ROMFS)
 
+# f4mrfaux Stereoscopic Edition — fork build stamp, auto-derived from git so it
+# can never drift. APP_VERSION_* (above, from resources/AppInfo) stays the honest
+# upstream base (snes9x_3ds 1.60.2); this only adds our edition + exact build commit.
+STEREO_BUILD_DATE := $(shell git -C $(TOPDIR) log -1 --format=%cd --date=format:%Y.%m.%d 2>/dev/null || echo unknown)
+STEREO_GIT_SHA    := $(shell git -C $(TOPDIR) rev-parse --short HEAD 2>/dev/null || echo unknown)
+
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -78,7 +84,7 @@ ifeq ($(STRICT_WARNINGS),1)
 WARNINGS += -Werror
 endif
 
-COMMON      := $(OPT_FLAGS) $(WARNINGS) -mword-relocations -fomit-frame-pointer -ffunction-sections -DVERSION_MAJOR=$(APP_VERSION_MAJOR) -DVERSION_MINOR=$(APP_VERSION_MINOR) -DVERSION_MICRO=$(APP_VERSION_MICRO) $(ARCH) $(INCLUDE) -D__3DS__
+COMMON      := $(OPT_FLAGS) $(WARNINGS) -mword-relocations -fomit-frame-pointer -ffunction-sections -DVERSION_MAJOR=$(APP_VERSION_MAJOR) -DVERSION_MINOR=$(APP_VERSION_MINOR) -DVERSION_MICRO=$(APP_VERSION_MICRO) -DSTEREO_BUILD_DATE_STR='"$(STEREO_BUILD_DATE)"' -DSTEREO_GIT_SHA_STR='"$(STEREO_GIT_SHA)"' $(ARCH) $(INCLUDE) -D__3DS__
 CFLAGS      := $(COMMON) -std=gnu99
 CXXFLAGS    := $(COMMON) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS     := $(ARCH)
