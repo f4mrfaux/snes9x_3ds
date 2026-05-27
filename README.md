@@ -4,6 +4,26 @@ This is a fork of [matbo87/snes9x_3ds](https://github.com/matbo87/snes9x_3ds) th
 
 Slide the 3D slider up and SNES backgrounds gain real depth — sprites stay at the screen plane.
 
+## Manifesto
+
+This fork exists because I wanted to see SNES games in real stereoscopic 3D on a Nintendo 3DS — and nobody else had built it. So I built it.
+
+It works. It runs on real hardware. When I hand someone a 3DS and they watch a *Super Mario World* background peel apart into depth, they smile. **That reaction is the entire reason this project exists.** Everything else is commentary.
+
+**On how it's made.** I use whatever tools get me to a working result — including AI. I won't apologize for it, and I won't debate it. A tool is a tool. Carpenters use power drills; I use the tools of my era to take an idea I couldn't otherwise have shipped and turn it into something running at 60fps in your hands. If the method offends you, the output doesn't care — and neither do I. The code is here, it's open, it's free. Read it, fork it, improve it, or don't.
+
+**What I won't do is relitigate this.** I'm not interested in purity tests about what "real" engineering is supposed to look like. In my experience the people gatekeeping how software *ought* to be made are never the ones actually shipping software. I shipped. It's on real hardware. It's in this repo.
+
+**Since people want to make it personal:** I have a brain injury. I also built the first stereoscopic-3D SNES emulator for the 3DS. Both are true, and the second one doesn't come with an asterisk because of the first. I use the tools I have to do the best work I can — same as anyone, just from a different starting line. I'm not ashamed of how my brain works or how I build. If you think using every tool available to ship something real *despite* the hand you were dealt is a weakness, you've got it backwards — that's the entire point.
+
+**Credit where it's due.** This stands on the work of [bubble2k16](https://github.com/bubble2k16) (the original snes9x_3ds) and [matbo87](https://github.com/matbo87/snes9x_3ds) (the modern base this builds on — mosaic, Mode 7, frame pacing). Respect to both. Building on giants' shoulders and passing it forward *is* the homebrew tradition, and I'm proud to be one more link in that chain.
+
+**Why I do it:** because it's possible, because it's fun, because it makes people happy, and because *"you can't / shouldn't / that's not how it's done"* has never once been a good enough reason not to try. I had an idea. I didn't have a permission slip. I built it anyway, with what I had. That's the methodology — the 3D is just the proof.
+
+If you got something out of this — a smile, a lesson, a base to build on — then it did its job. If you didn't, the internet is full of other software you're free to use instead.
+
+*Built with stubbornness and good tools. Shipped with love.* ✌️
+
 ## Download
 
 **Latest build → [Stereoscopic Edition · 2026.05.27](https://github.com/f4mrfaux/snes9x_3ds/releases/tag/stereo-edition-2026.05.27)** (pre-release)
