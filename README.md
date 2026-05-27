@@ -1,215 +1,182 @@
-# Snes9x for 3DS
+# Snes9x for 3DS — Stereoscopic 3D Fork
 
-## Overview
+This is a fork of [matbo87/snes9x_3ds](https://github.com/matbo87/snes9x_3ds) that adds **real stereoscopic 3D** to SNES games on the Nintendo 3DS. Background layers are separated at different depths using the 3DS parallax barrier display, similar to how SEGA's M2 studio handled their [3D Classics](https://en.wikipedia.org/wiki/3D_Classics) series.
 
-This project is a fork of the legacy snes9x_3ds codebase by [bubble2k](https://github.com/bubble2k16/snes9x_3ds) and continues that work with a modernized architecture and improved user experience.
-It builds with current devkitARM, libctru and citro3d releases (as of March 2026). Optional assets are available in the dedicated asset repository: [snes9x_3ds-assets](https://github.com/matbo87/snes9x_3ds-assets).
+Slide the 3D slider up and SNES backgrounds gain real depth — sprites stay at the screen plane.
 
-It works on all 2DS and 3DS models. Old 2DS/3DS can struggle with demanding games (e.g. Super FX titles like Star Fox), but many SNES games still run well.
+## Download
 
-Feedback, bug reports and contributions are welcome.
+**Latest build → [Stereoscopic Edition · 2026.05.27](https://github.com/f4mrfaux/snes9x_3ds/releases/tag/stereo-edition-2026.05.27)** (pre-release)
 
-## Main features
+A unified build: this fork's **stereoscopic 3D**, per-game depth gauge and SuperFX speedups, on top of matbo87's mosaic, Mode 7 perf/bilinear and Frame Sync from upstream `develop` (base: snes9x_3ds 1.60.2). _Note: it's tagged a pre-release, so GitHub's "Latest release" badge points at an older build — use the link above for the current one._
 
-* Thumbnail support (box art, title and gameplay)
-* Per-game backgrounds for top and bottom screens, overlays with auto-fit option
-* SNES refresh rate matching (60.1 Hz for NTSC, 50 Hz for PAL)
-* Theme support
-* Improved cheat management
-* Clean, RetroArch-style folder structure
-* Directory caching for faster ROM list loading
-* Extended hotkey options and screen swap support
-* **Stereoscopic 3D rendering with per-game depth tuning** (see below)
+## How to use
 
-## Stereoscopic 3D
+1. Download the `.3dsx` from the [latest build](https://github.com/f4mrfaux/snes9x_3ds/releases/tag/stereo-edition-2026.05.27)
+2. Copy it to `sd:/3ds/snes9x_3ds/snes9x_3ds.3dsx` on your 3DS SD card
+3. Launch from Homebrew Launcher
+4. Load a game and slide the 3D slider up
 
-The emulator renders SNES scenes in true stereoscopic 3D using the 3DS's dual-eye
-top screen. Each BG layer, sprite layer, Mode 7 plane and backdrop can sit at its
-own depth — foreground bricks pop toward the viewer while distant skies recede
-into the screen.
+With the slider at 0, the emulator behaves identically to upstream — zero overhead.
 
-**Basic use** — enable it once and slide the hardware 3D slider:
+## What's different from upstream?
 
-1. Open the in-game menu → `Settings` → scroll to **Stereoscopic 3D**
-2. Check **Enable Stereoscopic 3D**
-3. Start a game and push the physical 3D slider up — scene depth appears
-   automatically. Slide down to dial it back, all the way off for flat 2D
+[matbo87/snes9x_3ds](https://github.com/matbo87/snes9x_3ds) is an excellent SNES emulator with themes, thumbnails, bezels, cheats, and a citro3D GPU rendering pipeline. This fork preserves all of that and adds a stereoscopic 3D rendering layer on top.
 
-That's all most games need. The emulator reads the SNES's own layer-priority
-depth values and turns them into stereoscopic parallax per layer (*Auto* mode,
-default).
+| | matbo87 (upstream) | This fork |
+|---|---|---|
+| SNES emulation | Full | Full (identical) |
+| Themes, thumbnails, bezels, cheats | Yes | Yes |
+| Stereoscopic 3D | No | Yes — M2 3D Classics style (BG, OBJ, Mode 7) |
+| 3D slider control | No | Yes — physical slider controls depth intensity |
+| Per-layer depth tuning | No | Yes — per-game BG0-BG3, OBJ, Mode 7, Backdrop scale gauges |
+| Stretch mode compensation | No | Yes — parallax adjusts across all aspect ratios |
+| ROM Info dialog | No | Yes — in-menu ROM details |
+| Runtime debug logging | No | Yes — toggle in settings, no rebuild needed |
+| Slider at 0 | N/A | Identical to upstream (mono fast path) |
 
-**Per-game fine tuning** — if a game's stock layer ordering doesn't feel right
-(e.g. a background that should recede is popping forward, or a foreground isn't
-popping enough), open `Advanced 3D Depth (per game)` under the Stereoscopic 3D
-section:
+## How it works: Shader-Uniform Replay
 
-* Each layer has a **Depth** slider: **BG0 / BG1 / BG2 / BG3 / Sprites (OBJ) /
-  Mode 7 / Backdrop**
-* **Center (0)** = Auto (let the emulator decide — the default)
-* **Slide LEFT** = push that layer INTO the screen (recede)
-* **Slide RIGHT** = pop that layer TOWARD you
-* Farther from center = stronger effect
-* `Reset all to Auto (center)` zeroes all sliders
+The SNES renders graphics in layers — up to four background planes (BG0-BG3), a sprite layer (OBJ), and a backdrop color. Normally these are composited flat onto a single 2D framebuffer. This fork renders each main-screen layer **twice** (once per eye) with a small horizontal offset to create parallax.
 
-All tuning is saved per-game. Games that already look good with Auto need no
-changes.
+The critical design choice is that this is done **entirely on the GPU**:
 
-> **Note:** stereo 3D is GPU-accelerated via geometry shaders on the PICA200
-> and costs nothing when the physical 3D slider is at 0 (the right-eye pass is
-> skipped entirely). Expect no frame-rate impact during normal play.
+1. **CPU builds tile vertices once** — no extra CPU work compared to mono rendering
+2. **GPU draws main-screen layers twice** with different `stereoOffset` geometry shader uniforms — one pass for the left eye, one for the right
+3. Each eye's result goes to a separate 256x256 texture (`SNES_MAIN` for left, `SNES_MAIN_R` for right)
+4. The textures are composited to the 3DS top screen's left and right framebuffers via the parallax barrier
 
-## Setup
+Window/clip regions and sub-screen transparency layers are drawn only once (they don't need stereo separation).
 
-* A modded 3DS is required.
-* Install via [Universal Updater](https://universal-team.net/projects/universal-updater.html), or install the latest `.cia` from [Releases](https://github.com/matbo87/snes9x_3ds/releases)
-* Optional: download asset packs from [snes9x_3ds-assets releases](https://github.com/matbo87/snes9x_3ds-assets/releases).
+### Depth assignment
 
-ROMs can be stored in any folder. ZIP files are not supported.
+Layer depths are derived from the emulator's own compositing priority values — the `depth0`/`depth1` parameters already used by the `DRAW_*` macros in `gfxhw.cpp`. These encode which layers are in front of or behind others, so we reuse them directly as parallax depth factors. No per-game profiles are needed.
 
-Supported ROM formats:
-* `.smc`
-* `.sfc`
-* `.fig`
+For **Mode 1** (the most common SNES mode — Super Mario World, Zelda, Mega Man X, etc.):
 
-Configs, saves and imported assets are stored in `sd:/3ds/snes9x_3ds`.
+| Layer | Stereo Effect |
+|-------|---------------|
+| BG0 (foreground tiles) | Pops toward the viewer |
+| BG1 (mid-ground scenery) | Pops slightly toward the viewer |
+| BG2 (far background) | Recedes into the screen |
+| Sprites (OBJ) | Per-priority depth — OBJ.0 recedes behind BGs, OBJ.3 pops forward |
+| Backdrop | Deepest — behind everything |
 
-### 3DSX version
+Depth values change automatically per SNES graphics mode (Modes 0-6). Mode 7 games (F-Zero, Yoshi's Island, Super Mario Kart, Pilotwings) use **perspective-based stereo** — the geometry shader scales depth by each scanline's Y position, creating a natural vanishing-point effect where the horizon is flat and the foreground has full parallax.
 
-* Copy `snes9x_3ds.3dsx` to `sd:/3ds/snes9x_3ds`
-* Start it from the Homebrew Launcher
+### Per-game depth settings
 
-## Assets (images and cheats)
+The options menu includes a **Stereoscopic 3D** section with per-layer scale gauges:
 
-Assets are provided in dedicated asset repository:
-* [matbo87/snes9x_3ds-assets](https://github.com/matbo87/snes9x_3ds-assets)
+- **BG0-BG3 Scale** — Control how much each background layer pops forward or recedes (0% = flat at screen plane, 100% = default, 200% = exaggerated)
+- **OBJ Scale** — Sprite layer depth (per-priority: OBJ.0 behind BGs, OBJ.3 in front)
+- **Mode 7 Scale** — Perspective depth for Mode 7 games (F-Zero, Yoshi's Island, etc.)
+- **Backdrop Scale** — Solid color background depth
+- **Reset 3D to Defaults** — Resets all scales to 100%
+- **Apply 3D settings to all games** — Toggle between global and per-game depth profiles
 
-Notes:
+The physical 3D slider on the side of the 3DS controls overall depth intensity. The per-layer scales let you fine-tune which layers are more or less pronounced on a per-game basis.
 
-* The repository follows a 1G1R-style selection.
-* Naming is strict No-Intro style for matching.
+### Stretch mode compensation
+
+Stereo parallax is automatically compensated across all display stretch modes (native 256px, 320px, full 400px, Fit 8:7). The offset is normalized by `256/stretchWidth` so perceived depth stays consistent regardless of aspect ratio. The Fit 8:7 edge case (runtime `sWidth` override to 256 when `PPU.ScreenHeight >= 239`) is handled explicitly.
+
+### Key technical details
+
+- **Geometry shader uniform**: `stereoOffset` at register #5 in `shader_tiles.g.pica`, applied to projected X coordinates after the projection matrix multiply
+- **Clip-space scaling**: The offset is converted from pixel units to clip space (`* 2.0f / 256.0f`) since the orthographic projection maps 0..256 to -1..+1
+- **Right-eye texture redirect**: `SNES_MAIN_R` is a texture ID only, not a member of the `SGPU_TARGET_ID` enum (adding it would overflow the 3-bit `BW_TARGET` bitfield in the packed render state union). The redirect happens in `gpu3dsApplyRenderState()` when `GPU3DS.stereoRightEye` is set
+- **Depth buffer isolation**: The shared `SNES_DEPTH` buffer is cleared and window_lr clip regions are re-rendered between eye passes, preventing left-eye depth values from contaminating right-eye depth testing
+- **IOD range**: 0-3 pixels maximum displacement per layer, controlled linearly by the 3D slider position
+- **PICA200 ALU limitation**: The geometry shader cannot reference uniforms as direct operands in `add` — the uniform value is `mov`'d to a temp register first
+
+### Files changed (vs. upstream)
+
+| File | Change |
+|------|--------|
+| `source/shader_tiles.g.pica` | `stereoOffset` uniform + per-vertex X offset |
+| `source/3dsgpu.h` | Stereo state fields, right-eye redirect in render state application |
+| `source/3dsgpu.cpp` | Uniform registration, `gpu3dsSetStereoOffset()`, `isReal3DS()` stack alloc fix |
+| `source/3dsimpl_gpu.cpp` | Depth factor table, layer scale, per-eye draw loop, stretch compensation, diagnostic logging |
+| `source/3dsimpl.cpp` | `SNES_MAIN_R` texture allocation, depth buffer sharing, per-eye compositing, missing return fixes |
+| `source/3dsmain.cpp` | `gfxSet3D(true)`, stereo settings menu, config persistence, ROM Info dialog |
+| `source/3dssettings.h/cpp` | Per-layer scale fields, UseGlobal resolution, defaults |
+| `source/3dsconfig.h` | Config version bumps (global 1.3→1.4, game 1.1→1.2) |
+| `source/3dssound.cpp` | Null-check-before-dereference fix in sound init |
+| `source/3dsmenu.cpp` | Buffer size consistency fix |
+| `source/3dsui_img.cpp` | Non-fatal VRAM allocation for external UI textures |
+
+### Bugfixes (non-stereo)
+
+Fixes found during development that improve robustness independent of the stereo feature:
+
+- **Memory leak in `isReal3DS()`** — Heap-allocated version strings were never freed; switched to stack allocation
+- **Null pointer dereference in sound init** — `leftBuffer`/`rightBuffer` were derived from `fullBuffers` before the null check
+- **Missing return values** — `S9xReadMousePosition` and `S9xReadSuperScopePosition` stubs had no return statement
+
+## FAQ
+
+### Does this affect performance?
+
+Minimally. The CPU builds vertices once regardless of stereo mode. The GPU draws main-screen layers a second time, but the PICA200 handles 256x240 tile rendering comfortably. Target is 50-60 FPS with stereo enabled.
+
+### Can I adjust depth per game?
+
+Yes. Open the menu during gameplay and scroll to the **Stereoscopic 3D** section. Each background layer has its own scale gauge (0-200%). Settings are saved per game by default, or you can check "Apply 3D settings to all games" to use a single global profile. The physical 3D slider still controls overall intensity.
+
+### Does this work with all SNES games?
+
+It works with all games that use standard tile-based BG modes (Modes 0-6), which covers the vast majority of the SNES library. Mode 7 games (F-Zero, Yoshi's Island, Pilotwings) get perspective-based stereo depth with a dedicated Mode 7 Scale control.
+
+### Can I turn it off?
+
+Yes. Slide the 3D slider to 0. The emulator runs an identical mono code path with zero overhead — the eye loop executes once and no stereo uniforms are written.
+
+### What about the CIA version?
+
+Both `.3dsx` (Homebrew Launcher) and `.cia` (installable title) versions are provided in each release.
 
 ## Building from source
 
-* Install devkitPro and 3DS toolchain packages (including devkitARM, libctru, citro3d). If needed, follow the [devkitPro pacman guide](https://devkitpro.org/wiki/devkitPro_pacman).
-* The Makefile is based on TricksterGuy's [3ds-template](https://github.com/TricksterGuy/3ds-template).
+Requires devkitARM (`$DEVKITARM` must be set) and `3ds-libpng`:
 
-Required command-line tools in `PATH`:
+```bash
+sudo pacman -S 3ds-libpng  # if not already installed
+make
+```
 
-* For `3dsx` builds: `tex3ds`, `smdhtool`, `3dsxtool` (from the devkitPro 3DS toolchain).
-* For `cia` builds: `makerom` in addition to the above.
+Output: `output/matbo87-snes9x_3ds.3dsx` and `output/matbo87-snes9x_3ds.cia`
 
-Common build targets:
+See the [devkitPro installation guide](https://devkitpro.org/wiki/devkitPro_pacman) for toolchain setup.
 
-* `make 3dsx`
-* `make citra`
-* `make 3dslink` (sends the `.3dsx` to your Homebrew Launcher)
+## Upstream features (inherited from matbo87)
 
-This repository bundles `makerom` binaries under `makerom/` for convenience.
-Bundled binary provenance is documented in `makerom/BINARY_SOURCES.md`.
-
-### Emulator status
-
-* Citra macOS (Nightly 1989): incomplete (no audio, Mode 7 textures only partially visible)
-* Other 3DS emulators: not tested by me
+* Game thumbnails (boxart, title, gameplay)
+* Border (bezel) and second screen image (cover) for each game
+* Themes (dark mode, RetroArch-style)
+* Improved cheat menu with [no-intro sets](https://github.com/matbo87/snes9x_3ds-assets)
+* RetroArch-ish folder structure
+* Swap screen and hotkey options
+* Graphic modes 0-7, SDD1, SFX1/2, CX4, DSP, SA-1 chip support
+* Sound emulation at 32KHz with echo and gaussian interpolation
 
 ## Screenshots
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="screenshots/dark-mode-file-menu.png" alt="Aladdin" valign="bottom"></td>
-    <td width="50%" align="center"><img src="screenshots/retroarch-pause-screen.png" alt="Donkey Kong Country" valign="bottom"></td>
+    <td width="50%" align="center"><img src="screenshots/dark-mode-file-menu.png" alt="File menu" valign="bottom"></td>
+    <td width="50%" align="center"><img src="screenshots/retroarch-pause-screen.png" alt="Pause screen" valign="bottom"></td>
   </tr>
   <tr>
-    <td valign="top" width="50%">Start screen, File menu tab with "Game Thumbnail" option enabled</td>
-    <td valign="top" width="50%">Pause screen, RetroArch theme, per-game overlay enabled</td>
+    <td valign="top" width="50%">Start screen with game thumbnails</td>
+    <td valign="top" width="50%">Pause screen with RetroArch theme</td>
   </tr>
-  <tr><td colspan="2"></td></tr>
-  <tr></tr>
-  <tr>
-    <td width="50%" align="center"><img src="screenshots/aladdin-pp-cheats.png" alt="Aladdin" valign="bottom"></td>
-    <td width="50%" align="center"><img src="screenshots/dkc-tvstyle-hotkeys.png" alt="Donkey Kong Country" valign="bottom"></td>
-  </tr>
-  <tr>
-    <td valign="top" width="50%">Original theme, pixel-perfect video, cheats enabled</td>
-    <td valign="top" width="50%">TV-style video, applied hotkeys + "Analog to Digital Type" disabled</td>
-  </tr>
-  <tr><td colspan="2"></td></tr>
-  <tr></tr>
-  <tr>
-    <td width="50%" align="center"><img src="screenshots/sf2-cropped-border-cover.png" alt="Super Street Fighter II" valign="bottom"></td>
-    <td width="50%" align="center"><img src="screenshots/issd-screen-swap-konami-cheat.png" alt="International Superstar Soccer Deluxe" valign="bottom"></td>
-  </tr>
-  <tr>
-    <td valign="top" width="50%">Cropped 4:3 video, game-specific cover</td>
-    <td valign="top" width="50%">4:3 video, swapped screen and Konami cheat via 2-Player-Switch</td>
- </tr>
- </table>
-
-## Frequently Asked Questions
-
-### A game runs slow. How can I improve performance?
-
-* Increase `Frameskips` (try 1-2 first)
-* Set `SRAM Auto-Save Delay` to 60 seconds or disable it
-* Set `In-Frame Palette Changes` to `Disabled Style 1` or `Disabled Style 2`
-* Disable 3D and/or on-screen display settings
-* Super FX games often run poorly on old 2DS/3DS models
-* Check the [Compatibility List](http://wiki.gbatemp.net/wiki/Snes9x_for_3DS) with care, it may be outdated
-
-### A game looks broken or has visual glitches. What can I try?
-
-* Set `In-Frame Palette Changes` to `Enabled`
-* Enabled cheats can break visuals or gameplay; disable cheats and reload the game
-* Check if your ROM is valid (No-Intro is highly recommended; ROM hacks may have issues)
-* Check the [Compatibility List](http://wiki.gbatemp.net/wiki/Snes9x_for_3DS) with care, it may be outdated
-
-### Cheats are not working properly
-
-* The cheat set is only roughly tested
-* Some cheats may not work correctly and may damage save data
-* Always use cheats with caution
-
-
-## Snes core features
-
-* Graphic modes 0 * 7.
-* Frame skipping.
-* Stretch to full screen / 4:3 ratio
-* SDD1 chip (Street Fighter 2 Alpha, Star Ocean)
-* SFX1/2 chip (Yoshi's Island, but slow on old 3DS)
-* CX4 chip (Megaman X-2, Megaman X-3)
-* DSP chips (Super Mario Kart)
-* SA-1 chip (Super Mario RPG, Kirby Superstar)
-* Sound emulation (32KHz, with echo and gaussian interpolation)
-
-## What's missing / needs to be improved
-
-* Citra support is incomplete (no audio, partial Mode 7 rendering)
-* Audio backend depends on deprecated CSND service
-* Minor sound emulation errors
-* Poor performance in some Super FX games (for example Doom)
-* Mosaic effects
-* In-frame palette changes (a small number of games show color issues)
-
-## License
-
-Some files may carry their own license headers, but because this project includes the Snes9x core (`source/Snes9x/`), redistribution of the combined project follows the Snes9x non-commercial license terms.
-
-See:
-* [LICENSE.md](LICENSE.md)
-* [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+</table>
 
 ## Credits
 
-* bubble2k for [snes9x_3ds](https://github.com/bubble2k16/snes9x_3ds)
-* ramzinouri for [snes9x_3ds fork](https://github.com/ramzinouri/snes9x_3ds)
-* willjow for [snes9x_3ds fork](https://github.com/willjow/snes9x_3ds)
-* Wyatt-James for warning/safety/audio fixes adapted from [Wyatt-James/snes9x_3ds](https://github.com/Wyatt-James/snes9x_3ds):
-  * [69fecab](https://github.com/matbo87/snes9x_3ds/commit/69fecab) adapted from [7d24837](https://github.com/Wyatt-James/snes9x_3ds/commit/7d24837)
-  * [7e58c74](https://github.com/matbo87/snes9x_3ds/commit/7e58c74) adapted from [95fb508](https://github.com/Wyatt-James/snes9x_3ds/commit/95fb508) and [37200a1](https://github.com/Wyatt-James/snes9x_3ds/commit/37200a1)
-  * [5d43961](https://github.com/matbo87/snes9x_3ds/commit/5d43961) adapted from [be69369](https://github.com/Wyatt-James/snes9x_3ds/commit/be69369)
-  * [4c01c47](https://github.com/matbo87/snes9x_3ds/commit/4c01c47) adapted from [ed8bcf3](https://github.com/Wyatt-James/snes9x_3ds/commit/ed8bcf3)
-  * [24939f2](https://github.com/matbo87/snes9x_3ds/commit/24939f2) adapted from [c78e091](https://github.com/Wyatt-James/snes9x_3ds/commit/c78e091)
-  * [aaa2e83](https://github.com/matbo87/snes9x_3ds/commit/aaa2e83) adapted from [344b2d7](https://github.com/Wyatt-James/snes9x_3ds/commit/344b2d7)
-  * [6bd66de](https://github.com/matbo87/snes9x_3ds/commit/6bd66de) adapted from [f4244af](https://github.com/Wyatt-James/snes9x_3ds/commit/f4244af)
+* [matbo87](https://github.com/matbo87/snes9x_3ds) — upstream snes9x_3ds with citro3D overhaul, themes, thumbnails, and UI
+* [bubble2k](https://github.com/bubble2k16/snes9x_3ds) — original snes9x_3ds emulator
+* [ramzinouri](https://github.com/ramzinouri/snes9x_3ds) — earlier snes9x_3ds fork
+* [Asdolo](https://github.com/Asdolo/snes9x_3ds_forwarder) — CIA forwarder
+* Stereoscopic 3D implementation by [f4mrfaux](https://github.com/f4mrfaux) with [Claude Code](https://claude.com/claude-code)
