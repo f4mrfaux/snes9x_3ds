@@ -4,10 +4,16 @@ This is a fork of [matbo87/snes9x_3ds](https://github.com/matbo87/snes9x_3ds) th
 
 Slide the 3D slider up and SNES backgrounds gain real depth — sprites stay at the screen plane.
 
+## Download
+
+**Latest build → [Stereoscopic Edition · 2026.05.27](https://github.com/f4mrfaux/snes9x_3ds/releases/tag/stereo-edition-2026.05.27)** (pre-release)
+
+A unified build: this fork's **stereoscopic 3D**, per-game depth gauge and SuperFX speedups, on top of matbo87's mosaic, Mode 7 perf/bilinear and Frame Sync from upstream `develop` (base: snes9x_3ds 1.60.2). _Note: it's tagged a pre-release, so GitHub's "Latest release" badge points at an older build — use the link above for the current one._
+
 ## How to use
 
-1. Download `matbo87-snes9x_3ds.3dsx` from the [latest release](https://github.com/f4mrfaux/snes9x_3ds/releases)
-2. Copy to `sd:/3ds/snes9x_3ds/snes9x.3dsx` on your 3DS SD card
+1. Download the `.3dsx` from the [latest build](https://github.com/f4mrfaux/snes9x_3ds/releases/tag/stereo-edition-2026.05.27)
+2. Copy it to `sd:/3ds/snes9x_3ds/snes9x_3ds.3dsx` on your 3DS SD card
 3. Launch from Homebrew Launcher
 4. Load a game and slide the 3D slider up
 
