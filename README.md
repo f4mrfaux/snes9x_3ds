@@ -19,22 +19,6 @@ A unified build: this fork's **stereoscopic 3D**, per-game depth gauge and Super
 
 With the slider at 0, the emulator behaves identically to upstream — zero overhead.
 
-## What's different from upstream?
-
-[matbo87/snes9x_3ds](https://github.com/matbo87/snes9x_3ds) is an excellent SNES emulator with themes, thumbnails, bezels, cheats, and a citro3D GPU rendering pipeline. This fork preserves all of that and adds a stereoscopic 3D rendering layer on top.
-
-| | matbo87 (upstream) | This fork |
-|---|---|---|
-| SNES emulation | Full | Full (identical) |
-| Themes, thumbnails, bezels, cheats | Yes | Yes |
-| Stereoscopic 3D | No | Yes — M2 3D Classics style (BG, OBJ, Mode 7) |
-| 3D slider control | No | Yes — physical slider controls depth intensity |
-| Per-layer depth tuning | No | Yes — per-game BG0-BG3, OBJ, Mode 7, Backdrop scale gauges |
-| Stretch mode compensation | No | Yes — parallax adjusts across all aspect ratios |
-| ROM Info dialog | No | Yes — in-menu ROM details |
-| Runtime debug logging | No | Yes — toggle in settings, no rebuild needed |
-| Slider at 0 | N/A | Identical to upstream (mono fast path) |
-
 ## How it works: Shader-Uniform Replay
 
 The SNES renders graphics in layers — up to four background planes (BG0-BG3), a sprite layer (OBJ), and a backdrop color. Normally these are composited flat onto a single 2D framebuffer. This fork renders each main-screen layer **twice** (once per eye) with a small horizontal offset to create parallax.
@@ -182,6 +166,8 @@ See the [devkitPro installation guide](https://devkitpro.org/wiki/devkitPro_pacm
 * Stereoscopic 3D implementation by [f4mrfaux](https://github.com/f4mrfaux) with [Claude Code](https://claude.com/claude-code)
 
 ## Manifesto
+
+I am done working on this project. I am tired of the NHB communities response to all my efforts. first it was no one wanted to help because it was impossible, and now that its possible my efforts are invalidated due to the tools I used to  accomplish the goal. 
 
 This fork exists because I wanted to see SNES games in real stereoscopic 3D on a Nintendo 3DS — and nobody else had built it. So I built it.
 
