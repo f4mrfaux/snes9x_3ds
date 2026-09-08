@@ -3445,6 +3445,10 @@ void S9xRenderScreenHardware (bool8 sub)
 
 			bool isTile0 = PPU.Mode7Repeat == 3;
 
+			// Remembered for the menu: the mode register will have moved on to
+			// whatever draws the interface by the time anyone asks.
+			GPU3DSExt.mode7Drawn = true;
+
 			// Mode 7's planes land on depths the modes 2-7 arrangement already
 			// has sliders for, so they take their stereo depth from those
 			// rather than from anything of their own. The plane is BG1 with a

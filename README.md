@@ -132,7 +132,14 @@ frame, and so the depth that suits it, belongs to one arrangement or the other.
 
 Each therefore keeps its own set of depths, and **Sliders for** chooses which
 set the list is showing. The arrangement the game is in is marked with the mode
-it is in -- *Modes 0-1 (current: 1)* -- and the menu opens on it. What the
+it is in -- *Modes 0-1 (current: 1)* -- and the menu opens on it.
+
+A frame that drew a Mode 7 plane opens on Modes 2-7 whatever the mode register
+has moved on to since. Games that put a Mode 7 plane under a Mode 1 interface --
+F-Zero, Super Mario Kart, most Mode 7 racers -- leave the register on Mode 1 by
+the time you pause, and going by that alone opened the tab on a list of
+interface slots with every slider the plane needs hidden behind a picker
+change. What the
 greying and the blank previews mean is on that setting's description. The other one stays reachable, so a game
 that plays in Mode 1 and draws its map in Mode 3 can have both set up without
 having to be in the right screen at the time.

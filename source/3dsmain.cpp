@@ -797,15 +797,28 @@ static const char *depth3dSlotName(int slot) {
 // something, and left to the picker after that.
 static int depth3dShownFamily = DEPTH3D_FAMILY_MODE01;
 
-void menu3dsResetDepth3DFamily() {
-    depth3dShownFamily = DEPTH3D_FAMILY_OF(PPU.BGMode);
+// Which background mode describes the frame behind the menu. Mode 7 wins over
+// whatever the register holds: a plane covering the screen is what the frame
+// is, and the register has usually moved on to the mode of the interface drawn
+// over it.
+static int depth3dFrameBgMode() {
+    return gpu3dsFrameDrewMode7() ? 7 : PPU.BGMode;
 }
 
-// The previews are of the frame behind the menu, and that frame was drawn in
-// one arrangement. The other arrangement's sliders are for planes it is not
-// drawing, so there is nothing of theirs to show and none is captured.
+void menu3dsResetDepth3DFamily() {
+    // Mode 7 decides this where the frame drew one, rather than the mode
+    // register. A game that draws a Mode 7 plane under a Mode 1 interface --
+    // F-Zero, Super Mario Kart, most Mode 7 racers -- leaves the register on
+    // Mode 1, and opening on that set puts every slider the plane needs behind
+    // a picker change, with a list of interface slots in their place.
+    depth3dShownFamily = DEPTH3D_FAMILY_OF(depth3dFrameBgMode());
+}
+
+// The previews are of the frame behind the menu, so a set has something to show
+// only where that frame drew in it. A frame that drew in both -- a Mode 7 plane
+// under a Mode 1 interface -- has pictures for either.
 bool menu3dsDepth3DPreviewsApply() {
-    return depth3dShownFamily == DEPTH3D_FAMILY_OF(PPU.BGMode);
+    return gpu3dsFrameDrewFamily(depth3dShownFamily);
 }
 
 void makeDepth3DMenu(std::vector<SMenuItem>& items) {
@@ -837,7 +850,7 @@ void makeDepth3DMenu(std::vector<SMenuItem>& items) {
     // What the game was drawing when it stopped. A game is free to change mode
     // while the menu is closed, and even part-way down a frame, so this is the
     // mode of the last thing it drew rather than a property of the game.
-    int bgMode = PPU.BGMode;
+    int bgMode = depth3dFrameBgMode();
     bool bg3Priority = PPU.BG3Priority;
     bool extbg = IPPU.Mode7EXTBGFlag != 0;
     int currentFamily = DEPTH3D_FAMILY_OF(bgMode);

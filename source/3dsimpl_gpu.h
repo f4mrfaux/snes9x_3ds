@@ -354,6 +354,12 @@ typedef struct
     float           mode7Near;
     float           mode7Far;
 
+    // Whether the frame drew a Mode 7 plane at all. The mode register alone
+    // cannot answer that after the fact: a game that draws its road in Mode 7
+    // and its interface in Mode 1 leaves the register on Mode 1, so by the time
+    // the menu asks, the frame looks like an ordinary Mode 1 one.
+    bool            mode7Drawn;
+
     GPU_TEXCOLOR    mode7TextureFormat;
     bool            mode7SectionsModified[4];
     bool            mode7TilesModified;
@@ -739,6 +745,22 @@ inline void gpu3dsResetMode7Spans()
     GPU3DSExt.mode7Lines = 0;
     GPU3DSExt.mode7Near = 1e30f;
     GPU3DSExt.mode7Far = 0.0f;
+    GPU3DSExt.mode7Drawn = false;
+}
+
+// Whether the frame that was last drawn put a Mode 7 plane on the screen. The
+// mode register cannot answer this after the fact, because it has usually moved
+// on to the mode of the interface drawn over that plane.
+inline bool gpu3dsFrameDrewMode7()
+{
+    return GPU3DSExt.mode7Drawn;
+}
+
+// Whether the frame drew anything in that arrangement. A frame can be both:
+// a Mode 7 road under a Mode 1 interface is drawn in one and then the other.
+inline bool gpu3dsFrameDrewFamily(int family)
+{
+    return (GPU3DSExt.stereo.familiesDrawn & (1 << family)) != 0;
 }
 
 //---------------------------------------------------------
