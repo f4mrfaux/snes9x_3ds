@@ -41,13 +41,16 @@ is the worse of the two: a region one eye can see and the other cannot has
 nothing to fuse with, and reads as a shimmer along the frame rather than as
 depth.
 
-Mode 7 takes the modes 2-7 sliders, and by default reads how far each of its
-scanlines lies from the scale the hardware is drawing it at, so the plane
-recedes rather than standing at one depth. The scale at which it is drawn 1:1 is
-taken as the screen plane, which is a convention rather than something the game
-states: a game whose Mode 7 is drawn magnified throughout therefore sits in
-front of the screen until its slider is taken negative, and `Mode 7 perspective`
-switches the whole thing off for a game whose Mode 7 is not a surface.
+Mode 7 takes the modes 2-7 sliders, and by default reads the shape of its depth
+from the scale the hardware draws each scanline at, so the plane recedes rather
+than standing at one depth. Where the plane sits is not something Mode 7 states,
+so its near end is put at the screen and its far end at the slider's full value:
+the slider is a depth budget for the plane rather than an absolute distance.
+
+The reach is measured per frame rather than per HDMA section, since a game can
+deliver one plane in several. A plane whose scale never changes has no reach to
+spread anything over and stays flat at the slider's depth, which is also what
+`Mode 7 perspective` switched off does to any plane.
 
 Windows and colour-math regions stay in screen space rather than moving with the
 slot they mask, so a windowed effect over a slot with depth is off by that slot's

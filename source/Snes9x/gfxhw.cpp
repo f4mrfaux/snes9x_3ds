@@ -3204,8 +3204,12 @@ void S9xDrawBackgroundMode7Hardware(int bg, bool8 sub, int depth, int alphaTestA
 		float tx1 = (float)(AA1 + BB) * INV_M7_SCALE;
 		float ty1 = (float)(CC1 + DD) * INV_M7_SCALE;
 
+		// The depth cannot be decided here: it depends on the reach of the
+		// whole plane, and HDMA can deliver that in several sections.
+		gpu3dsRecordMode7Span(gpu3dsMode7Span(tx1 - tx0, ty1 - ty0));
+
 		gpu3dsAddMode7LineVertexes(Left << hiShift, Y+depth, Right << hiShift, slot,
-			gpu3dsEncodeMode7Depth(tx1 - tx0, ty1 - ty0), tx0, ty0, tx1, ty1);
+			0, tx0, ty0, tx1, ty1);
 	}
 
 	layerVerticesCount[bg] = GPU3DS.vertices[VBO_SCENE_MODE7_LINE].count;
@@ -3224,6 +3228,7 @@ void S9xDrawBackgroundMode7HardwareRepeatTile0(int bg, bool8 sub, int depth)
 
 	// Same as above: the scanline's right-hand end carries the slot itself.
 	int slot = (depth >> 8) & 0x1F;
+
 
 	for (int Y = (int)LayerRender.startY[bg]; Y <= (int)GFX.EndY; Y++)
 	{
@@ -3272,8 +3277,10 @@ void S9xDrawBackgroundMode7HardwareRepeatTile0(int bg, bool8 sub, int depth)
 
 		if (!withinTexture)
 		{
+			gpu3dsRecordMode7Span(gpu3dsMode7Span(tx1 - tx0, ty1 - ty0));
+
 			gpu3dsAddMode7LineVertexes(Left << hiShift, Y+depth, Right << hiShift, slot,
-				gpu3dsEncodeMode7Depth(tx1 - tx0, ty1 - ty0), tx0, ty0, tx1, ty1);
+				0, tx0, ty0, tx1, ty1);
 
 			verticesUpdated = true;
 		}

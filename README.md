@@ -215,26 +215,35 @@ A Mode 7 plane is not at one distance. It is a flat surface the hardware can
 tilt away from you, and the whole point of the mode is that the far end of it is
 further away than the near end. Giving it a single depth would stand it on end.
 
-**Mode 7 perspective** is on by default, and reads the distance out of what Mode
-7 is already doing rather than guessing it. The plane's scale on a scanline is
-how much of the texture that scanline covers, and scale is one over distance, so
-the span a scanline walks across the screen *is* its distance. The scale at
-which the plane is drawn 1:1 is taken as the screen, so:
+**Mode 7 perspective** is on by default, and takes the *shape* of the distance
+out of what Mode 7 is already doing. The plane's scale on a scanline is how much
+of the texture that scanline covers, and scale is one over distance, so the span
+a scanline walks across the screen says how far away the ground it draws is.
+That is a real measurement, and it is why the depth is spaced the way
+perspective actually spaces it rather than evenly down the screen.
 
-* a part of the plane drawn at 1:1 sits at the screen, whatever its slider says
-* the further parts recede behind it, up to the slider's full value
-* a part drawn larger than life comes in front of the screen instead
+What Mode 7 does **not** say is where any of that sits relative to you, and
+there is no fixed scale that answers it. So the near end of the plane is put at
+the screen and the far end at the slider's full depth, with the measured shape
+in between. The slider stops meaning "how far away this is" and means "how much
+depth to spend on this plane", which is the question a viewer can actually
+answer.
 
-A racing game's road therefore leaves the bottom of the screen where it is and
-sinks away towards the horizon, which is what looking at a road does. A plane
-with no perspective in it -- an overhead map, a whole-screen picture being
-spun -- walks the same span on every scanline and so comes out flat, at one
-depth, with nothing having to detect which kind it is.
+A racing game's road therefore stays where it meets the bottom of the screen and
+sinks away towards the horizon, using the whole slider on the way. So does a
+tilted map. Both use the same range whatever scale the game happens to draw at.
 
-Switched off, the whole plane takes its slider's depth on every scanline. That
-is the escape hatch for a game whose Mode 7 is not a surface at all.
+The reach is measured over the whole frame, not over each band of it. Games
+deliver Mode 7 in several HDMA sections -- F-Zero's road arrives in two -- and
+scaling each one to its own ends would step the depth back to the far end at
+every seam.
 
-The slider it scales is the one the plane's slot already has: **BG1 prio 0**
+A plane whose scale never changes has no two ends to spread anything between: an
+overhead map, or a picture being spun, is not a surface receding from you. Those
+stay flat and take the slider's depth whole, which is also what switching this
+off does to any plane.
+
+The slider it acts on is the one the plane's slot already has: **BG1 prio 0**
 for the Mode 7 plane, and **BG2 prio 0** and **BG2 prio 1** for the second plane
 EXTBG adds.
 

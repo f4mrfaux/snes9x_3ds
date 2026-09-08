@@ -467,6 +467,7 @@ void gpu3dsPrepareSnesScreenForNextFrame() {
 	gpu3dsPrepareListForNextFrame(&GPU3DS.vertices[VBO_SCENE_RECT], true);
 	gpu3dsPrepareListForNextFrame(&GPU3DS.vertices[VBO_SCENE_TILE], true);
 	gpu3dsPrepareListForNextFrame(&GPU3DS.vertices[VBO_SCENE_MODE7_LINE], true);
+	gpu3dsResetMode7Spans();
 
     if (GPU3DSExt.render2x.dirty) {
         if (GPU3DSExt.stereo.supported)
@@ -561,6 +562,10 @@ void gpu3dsDrawSnesScreen() {
     // The pause menu in particular begins its frame on the screen shader, and
     // the per-layer draws below only ever set the target, not the program.
     GPU3DS.currentRenderState.shader = SPROGRAM_TILES;
+
+    // Every Mode 7 scanline of the frame is in by now, so the plane's reach is
+    // known and each of them can be given its place along it.
+    gpu3dsApplyMode7LineDepths();
 
     gpu3dsUploadDepthSlotOffsets();
 

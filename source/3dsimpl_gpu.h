@@ -72,9 +72,9 @@ typedef struct {
 } SRectVertex;
 
 // One SNES scanline of a Mode 7 plane. z is always 0, which is what tells the
-// vertex shader there is no tile to unpack; w carries how far that scanline's
-// ground lies from the camera, so the plane can recede rather than stand up on
-// end. See gpu3dsEncodeMode7Depth.
+// vertex shader there is no tile to unpack; w carries where that scanline falls
+// between the near and far ends of the plane, so it can recede rather than stand
+// up on end. See gpu3dsEncodeMode7Depth.
 typedef struct {
     SVector4i    Position;
 	STexCoord2f  TexCoord;
@@ -222,51 +222,54 @@ typedef struct
 // the slot's shift by 1 + w / MODE7_DEPTH_UNIT.
 #define MODE7_DEPTH_UNIT        4096
 
-// As near as a Mode 7 plane is allowed to come: the whole of the slot's shift,
-// with the sign flipped, so the plane stands in front of the screen by as much
-// as the slider would have put it behind.
-#define MODE7_DEPTH_NEAREST     (-2 * MODE7_DEPTH_UNIT)
-
-// The scale a Mode 7 plane sits at the screen plane at, in texels crossed per
-// scanline. A plane drawn 1:1 walks one texel per pixel, so it covers the
-// screen's 256 pixels with 256 texels.
-#define MODE7_SCREEN_PLANE_SPAN 256.0f
-
 //---------------------------------------------------------
-// How far a Mode 7 scanline's ground lies from the camera,
-// as the shader wants it.
+// How far a Mode 7 scanline's ground lies, as the shader
+// wants it.
 //
-// Mode 7 states the distance itself. The plane's scale on a
-// scanline is how much of the texture that scanline covers,
-// and scale is one over distance, so the texture distance the
-// scanline walks -- its span -- is the distance to the ground
-// it draws, up to a constant. That constant is fixed here by
-// calling the 1:1 scale the screen plane:
+// Mode 7 states the shape of the distance itself. The plane's
+// scale on a scanline is how much of the texture that scanline
+// covers, and scale is one over distance, so the span a
+// scanline walks is proportional to how far away the ground it
+// draws is. Taking the length of the span rather than its
+// horizontal part alone keeps a rotating plane steady: the two
+// are equal only when the plane is square to the screen.
 //
-//   1:1, span 256      the scanline sits at the screen
-//   minified, farther  towards the slot's full depth
-//   magnified, nearer  the other way, in front of the screen
+// What Mode 7 does *not* state is where any of that sits
+// relative to the viewer, and that is the whole difficulty.
+// Read as an absolute distance against some fixed scale, a
+// plane lands wherever it happens to land: F-Zero's road
+// straddles 1:1 and puts half the screen in front of the
+// display, while Zelda's map sits within a few percent of it
+// and gets no visible depth at all. Neither is a property of
+// the game -- both are the arbitrary reference showing through.
 //
-// which is the parallax of a point at distance Z seen with the
-// screen at the 1:1 distance. Taking the length of the span
-// rather than its horizontal part alone keeps a rotating plane
-// steady: the two are the same only when the plane is square
-// to the screen.
+// So the near end of the plane is put at the screen and the far
+// end at the slot's full depth, and the 1/distance shape is
+// kept in between. The slider stops meaning "how far away this
+// is" and means "how much depth to spend on this plane", which
+// is the useful question and the one a viewer can answer.
 //
-// A plane with no perspective walks the same span on every
-// scanline and comes out flat at one depth, which is what an
-// overhead Mode 7 wants and what a whole-screen Mode 7 picture
-// wants. Nothing has to detect which kind a game is drawing.
+// A plane whose scale never changes has nothing between its two
+// ends, and comes out flat: an overhead map, or a picture being
+// spun, is not a surface receding from you and should not be
+// drawn as one.
 //---------------------------------------------------------
-static inline s16 gpu3dsEncodeMode7Depth(float dtx, float dty)
+static inline float gpu3dsMode7Span(float dtx, float dty)
 {
-    float span = sqrtf(dtx * dtx + dty * dty);
+    return sqrtf(dtx * dtx + dty * dty);
+}
 
-    // Also the divide's guard: every span past this maps inside the range.
-    if (span <= MODE7_SCREEN_PLANE_SPAN / 2.0f)
-        return MODE7_DEPTH_NEAREST;
+// Where one scanline falls between the nearest and furthest the
+// plane reaches this frame, as 1/distance so the spacing stays
+// the one perspective actually has. 0 is the near end, 1 the far.
+static inline s16 gpu3dsEncodeMode7Depth(float span, float invNear, float invRange)
+{
+    float f = span > 0.0f ? (invNear - 1.0f / span) * invRange : 0.0f;
 
-    return (s16)(int)(-(MODE7_DEPTH_UNIT * MODE7_SCREEN_PLANE_SPAN) / span);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
+
+    return (s16)(int)((f - 1.0f) * MODE7_DEPTH_UNIT);
 }
 
 typedef struct
@@ -340,6 +343,16 @@ typedef struct
     u32             newCacheTexturePosition;
 
     u16             mode7FrameCount;
+
+    // Every Mode 7 scanline this frame emitted, in emission order, with the
+    // nearest and furthest the plane reached across all of them. A frame's
+    // Mode 7 can arrive in several HDMA sections, and they have to be spread
+    // over one range: normalised section by section, the depth jumps back to
+    // the far end at every seam.
+    float           mode7Span[MAX_VERTICES_MODE7_LINE / 2];
+    int             mode7Lines;
+    float           mode7Near;
+    float           mode7Far;
 
     GPU_TEXCOLOR    mode7TextureFormat;
     bool            mode7SectionsModified[4];
@@ -703,6 +716,75 @@ inline void __attribute__((always_inline)) gpu3dsAddMode7LineVertexes(
     list->count += 2;
 }
 
+
+//---------------------------------------------------------
+// Records how far one Mode 7 scanline reaches, as it is
+// emitted. The depth cannot be worked out yet: where a scanline
+// falls between the two ends of the plane is not known until
+// every section of it has been walked.
+//---------------------------------------------------------
+inline void gpu3dsRecordMode7Span(float span)
+{
+    if (GPU3DSExt.mode7Lines >= (int)(sizeof(GPU3DSExt.mode7Span) / sizeof(float)))
+        return;
+
+    GPU3DSExt.mode7Span[GPU3DSExt.mode7Lines++] = span;
+
+    if (span < GPU3DSExt.mode7Near) GPU3DSExt.mode7Near = span;
+    if (span > GPU3DSExt.mode7Far)  GPU3DSExt.mode7Far = span;
+}
+
+inline void gpu3dsResetMode7Spans()
+{
+    GPU3DSExt.mode7Lines = 0;
+    GPU3DSExt.mode7Near = 1e30f;
+    GPU3DSExt.mode7Far = 0.0f;
+}
+
+//---------------------------------------------------------
+// Gives every Mode 7 scanline of the finished frame its place
+// between the plane's near and far ends. Run once the whole
+// frame has been built, and before either eye is drawn.
+//
+// A plane whose scale never changes has no two ends to spread
+// anything between, so it is left flat and takes its slot's
+// depth whole. That is the overhead map and the spinning
+// picture: not a surface receding from the viewer.
+//---------------------------------------------------------
+inline void gpu3dsApplyMode7LineDepths()
+{
+    int lines = GPU3DSExt.mode7Lines;
+    float near = GPU3DSExt.mode7Near;
+    float far = GPU3DSExt.mode7Far;
+
+    if (lines <= 0 || near <= 0.0f || far <= 0.0f)
+        return;
+
+    float invNear = 1.0f / near;
+    float range = invNear - 1.0f / far;
+
+    // Under about a percent of reach and the plane is flat as far as anyone can
+    // see; spreading a whole slider over that would only turn rounding in the
+    // matrix into depth that is not there.
+    if (range < invNear * 0.01f)
+        return;
+
+    float invRange = 1.0f / range;
+    // From the start of the buffer, not from list->from: that has been walked
+    // forward past every section as they were committed, and all of this
+    // frame's scanlines were appended from index 0 in the order they were
+    // recorded. Nothing else shares this list.
+    SVertexList *list = &GPU3DS.vertices[VBO_SCENE_MODE7_LINE];
+    SMode7LineVertex *vertices = (SMode7LineVertex *) list->data;
+
+    for (int i = 0; i < lines; i++)
+    {
+        s16 w = gpu3dsEncodeMode7Depth(GPU3DSExt.mode7Span[i], invNear, invRange);
+
+        vertices[i * 2 + 0].Position.w = w;
+        vertices[i * 2 + 1].Position.w = w;
+    }
+}
 
 inline void __attribute__((always_inline)) gpu3dsSetMode7TileModified(int idx, u8 data)
 {
