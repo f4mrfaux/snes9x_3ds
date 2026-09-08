@@ -245,7 +245,14 @@ off does to any plane.
 
 The slider it acts on is the one the plane's slot already has: **BG1 prio 0**
 for the Mode 7 plane, and **BG2 prio 0** and **BG2 prio 1** for the second plane
-EXTBG adds.
+EXTBG adds. Mode 7 reaches ten times further than that number would move a tile
+layer, because a slider is sized for how far a flat plane can be moved before
+the eyes stop fusing, while a receding surface spends its depth over everything
+between the screen and the horizon -- the same number spread over that range
+barely reads. So `1` here is worth about what `10` is worth on a background, and
+the top of the slider is a great deal of depth: far enough that the horizon
+will run off the side in one eye, since the edge crop is sized from the sliders
+and not from this. Start low.
 
 ### Using the sliders
 

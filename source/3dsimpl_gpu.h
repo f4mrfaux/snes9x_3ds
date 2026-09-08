@@ -219,8 +219,21 @@ typedef struct
 #define MODE7_GEOMETRY_MARK     (-16384)
 
 // The fixed point the shader reads a Mode 7 scanline's distance in: it scales
-// the slot's shift by 1 + w / MODE7_DEPTH_UNIT.
-#define MODE7_DEPTH_UNIT        4096
+// the slot's shift by 1 + w / MODE7_DEPTH_UNIT. Small enough that the gain
+// below still fits the signed 16-bit field the vertex carries it in, and far
+// finer than a pixel either way.
+#define MODE7_DEPTH_UNIT        2048
+
+// How much further a Mode 7 plane is pushed than the slider alone would push a
+// tile layer. A slider is at most DEPTH3D_MAX pixels because that is as far as
+// a flat plane can be moved before the two eyes stop fusing, but a receding
+// surface spends its depth over the whole distance from the screen to the
+// horizon, and the same number spread over that range barely reads at all.
+//
+// Note that the far end of the plane can then be moved much further than the
+// edge crop is sized for, since that is bounded by the sliders. At the top of
+// the slider the horizon will run off the side in one eye.
+#define MODE7_DEPTH_GAIN        10
 
 //---------------------------------------------------------
 // How far a Mode 7 scanline's ground lies, as the shader
@@ -261,7 +274,8 @@ static inline float gpu3dsMode7Span(float dtx, float dty)
 
 // Where one scanline falls between the nearest and furthest the
 // plane reaches this frame, as 1/distance so the spacing stays
-// the one perspective actually has. 0 is the near end, 1 the far.
+// the one perspective actually has. 0 is the near end, 1 the far,
+// and the far end is then taken out to the gain.
 static inline s16 gpu3dsEncodeMode7Depth(float span, float invNear, float invRange)
 {
     float f = span > 0.0f ? (invNear - 1.0f / span) * invRange : 0.0f;
@@ -269,7 +283,7 @@ static inline s16 gpu3dsEncodeMode7Depth(float span, float invNear, float invRan
     if (f < 0.0f) f = 0.0f;
     if (f > 1.0f) f = 1.0f;
 
-    return (s16)(int)((f - 1.0f) * MODE7_DEPTH_UNIT);
+    return (s16)(int)((f * MODE7_DEPTH_GAIN - 1.0f) * MODE7_DEPTH_UNIT);
 }
 
 typedef struct
