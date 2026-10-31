@@ -8,23 +8,34 @@
 #include "3dsui.h"
 #include "3dsthemes.h"
 #include "3dssettings.h"
+#include "3dsglyphs.h"
 
 
 #define MENU_PREFIX_FILE "  "
-#define MENU_PREFIX_CHILD_DIRECTORY "  \x01 "
 #define MENU_PREFIX_PARENT_DIRECTORY ""
 
-#define MENU_HEIGHT             (14)
+#define MENU_ITEM_HEIGHT        (14)
+#define ANIMATE_TAB_STEPS       3
 
 enum { TAB_EMULATOR, TAB_SETTINGS, TAB_DEPTH3D, TAB_CONTROLS, TAB_CHEATS, TAB_DIRTY_COUNT };
 
 static_assert(TAB_DIRTY_COUNT == MENU_TAB_DIRTY_COUNT, "settings3DS.menuTabDirty is sized for a different number of tabs");
 
-typedef struct 
+// Temporary in-tab pages.
+enum { SUBPAGE_NONE = 0, SUBPAGE_RETRO_ACHIEVEMENTS };
+
+enum ButtonVisibility {
+    BTN_SHOW_ALWAYS,
+    BTN_SHOW_FILE_TAB,
+    BTN_SHOW_FILE_OR_SUBPAGE,
+};
+
+typedef struct
 {
     const char* label;
-    const char* icon;
+    UiIcon icon;
     uint32 color;
+    ButtonVisibility visibility;
 } MenuButton;
 
 // currently used for save states
@@ -149,25 +160,25 @@ public:
     // depth tab and its slot previews -- asks for taller ones, and fewer of
     // them fit on the screen as a result.
     int     RowHeight = FONT_HEIGHT;
-
-    // How many rows the screen holds, counting every row as this tab's height.
-    // This is what the scrolling is sized by; the drawing fits what it can into
-    // the room it has and can show more.
-    //
-    // That is the worst case: a tab mixing rows that carry a picture with rows
-    // that do not fits one or two more than this. Answering for the worst case
-    // keeps it independent of where the list is scrolled to -- the count is
-    // used to decide the scrolling itself, so a count that moved with it would
-    // leave the selected row just off the bottom. Erring low is safe: every row
-    // it counts is drawn, since none of them is taller than it assumed.
-    int     VisibleItems() const {
-        return MENU_HEIGHT * FONT_HEIGHT / RowHeight;
-    }
     std::string SubTitle;
+    std::string SubTitleRight;
     std::string Title;
     std::string DialogText;
     int         FirstItemIndex;
     int         SelectedItemIndex;
+
+    // Optional temporary page state for this tab.
+    struct SubPage {
+        int  id = SUBPAGE_NONE;
+        int  footerHeight = 0;
+        std::function<void(int selectedIndex, int footerTop,
+                           int footerHeight, int menuItemFrame, int menuBackColor)> drawFooter;
+        int parentSelectedIndex = 0;
+        int parentFirstItemIndex = 0;
+        bool active() const { return id != SUBPAGE_NONE; }
+    };
+    SubPage     subPage;
+    bool        IsSubPage() const { return subPage.active(); }
 
     void SetTitle(const std::string& title) {
         // Left trim the dialog title
@@ -204,6 +215,7 @@ inline bool menu3dsIsFileTab(int tabIndex, const std::vector<SMenuTab>& menuTabs
 }
 
 void menu3dsAddTab(std::vector<SMenuTab>& menuTabs, const char *title, const std::vector<SMenuItem>& menuItems);
+int menu3dsGetListVisibleItems(const SMenuTab& tab);
 
 void menu3dsDrawEverything(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs, int menuFrame = 0, int menuItemsFrame = 0, int dialogFrame = 0, bool animationFinished = true);
 void menu3dsDrawEverything(int& currentMenuTab, std::vector<SMenuTab>& menuTabs);
@@ -219,8 +231,18 @@ void menu3dsSwapBuffersAndWaitForVBlank();
 int menu3dsMenuSelectItem(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs);
 void menu3dsHideMenu(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs);
 
+// Text lines a dialog body needs at the dialog's text width, clamped to maxLines.
+int menu3dsGetDialogTextLines(const char *text, int maxLines);
+
 int menu3dsShowDialog(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs, const std::string& title, const std::string& dialogText, int dialogBackColor, const std::vector<SMenuItem>& menuItems, int selectedID = -1, bool fadeIn = true, int textLines = -1);
-void menu3dsShowRomLoadingDialog(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs, const std::string& title, const std::string& text, int dialogColor, const char* romName = nullptr);
+
+void menu3dsRunRomLoadingDialog(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs, const std::string& title, const std::string& text, int dialogColor, const char* romName = nullptr);
+
+// Keeps the UI live while waiting for the pending RA request.
+void menu3dsWaitForPendingRaRequest(const std::function<void()>& onFrame);
+void menu3dsRunBadgeCache(SMenuTab& dialogTab, int currentMenuTab, std::vector<SMenuTab>& menuTabs, const char* romName = nullptr);
+// Runs badge caching while the caller renders progress.
+void menu3dsRunBadgeDownload(const std::function<void(bool isDownloading, int downloadedCount, int downloadCount)>& onStatus);
 void menu3dsHideDialog(SMenuTab& dialogTab, bool& isDialog, int& currentMenuTab, std::vector<SMenuTab>& menuTabs, bool fadeOut = true);
 
 int menu3dsGetLastSelectedTabIndex();
@@ -235,7 +257,7 @@ bool menu3dsHasDirtyTabs();
 std::string menu3dsGetRomInfo();
 void menu3dsSetHotkeysData(const char* hotkeysData[HOTKEYS_COUNT][3]);
 
-void menu3dsSetCheatsCount(SMenuItem& item, int active, int total);
+void menu3dsSetCheatsCount(SMenuTab& tab, int active, int total);
 
 void menu3dsShowSplashMessage(const char *message);
 

@@ -183,6 +183,7 @@ void impl3dsInvalidateScreen(gfxScreen_t screen, bool isTopStereo = false, bool 
 void impl3dsClearTopFramebuffers();
 
 void impl3dsSceneRender(bool firstFrame, bool paused = false, bool pausedOverlay = true);
+bool impl3dsPauseAnimationRunning();
 
 // Size of one slot preview in the 3D depth menu. The tab asks for rows twice
 // the usual 13 pixels so there is room for this and a one-pixel frame.
