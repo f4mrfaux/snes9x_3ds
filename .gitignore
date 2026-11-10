@@ -15,3 +15,5 @@ dbg*.png
 dbg*.log
 layouttest*.png
 layouttest*.log
+
+__pycache__/

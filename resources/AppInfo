@@ -1,6 +1,6 @@
 APP_TITLE = Snes9x 3D
 APP_DESCRIPTION = SNES emulation with per-plane stereoscopic depth.
-APP_AUTHOR = bubble2k16, matbo87, rcmz
+APP_AUTHOR = bubble2k16, matbo87, rcmz, f4mrfaux
 APP_PRODUCT_CODE = CTR-P-SNS3
 APP_UNIQUE_ID = 0x3D59
 APP_VERSION_MAJOR = 1

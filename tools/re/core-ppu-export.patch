@@ -1,0 +1,85 @@
+From 09ea9c14f12cd44fb58a3909209a47f0e94d296a Mon Sep 17 00:00:00 2001
+From: f4mrfaux <33949344+f4mrfaux@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 12:31:31 -0500
+Subject: [PATCH] libretro: add a read-only PPU state export for
+ reverse-engineering tools
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ libretro/libretro.cpp | 47 +++++++++++++++++++++++++++++++++++++++++++
+ libretro/libretro.def |  3 ++-
+ 2 files changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/libretro/libretro.cpp b/libretro/libretro.cpp
+index b7aaace..2ed3cb0 100644
+--- a/libretro/libretro.cpp
++++ b/libretro/libretro.cpp
+@@ -2352,6 +2352,53 @@ void* retro_get_memory_data(unsigned type)
+     return data;
+ }
+ 
++// Debug export for reverse-engineering tools: a read-only copy of the PPU state
++// that libretro has no API for. Layout is documented in tools/re of the 3DS
++// stereo fork. Returns the bytes written, or the size needed if out is too small.
++extern "C" size_t snes9x_re_ppu_state(uint8_t *out, size_t size)
++{
++   enum { STATE_SIZE = 35 };
++   if (!out || size < STATE_SIZE)
++      return STATE_SIZE;
++
++   uint8_t *p = out;
++   *p++ = PPU.BGMode;
++   *p++ = PPU.BG3Priority;
++   *p++ = PPU.Brightness;
++   *p++ = PPU.ForcedBlanking ? 1 : 0;
++   *p++ = Memory.FillRAM[0x212c];
++   *p++ = Memory.FillRAM[0x212d];
++   *p++ = Memory.FillRAM[0x2130];
++   *p++ = Memory.FillRAM[0x2131];
++
++   for (int i = 0; i < 4; i++)
++   {
++      *p++ = (uint8_t)(PPU.BG[i].SCBase & 0xff);
++      *p++ = (uint8_t)(PPU.BG[i].SCBase >> 8);
++      *p++ = (uint8_t)(PPU.BG[i].NameBase & 0xff);
++      *p++ = (uint8_t)(PPU.BG[i].NameBase >> 8);
++      *p++ = PPU.BG[i].BGSize;
++   }
++
++   *p++ = (uint8_t)(PPU.OBJNameBase & 0xff);
++   *p++ = (uint8_t)(PPU.OBJNameBase >> 8);
++   *p++ = PPU.OBJSizeSelect;
++
++   // Sprites whose top edge is on screen, by priority. Size is ignored, so this
++   // is a count for telling scenes apart rather than an exact visibility test.
++   uint8_t *counts = p;
++   memset(counts, 0, 4);
++   p += 4;
++   for (int i = 0; i < 128; i++)
++   {
++      const struct SOBJ &o = PPU.OBJ[i];
++      if (o.VPos < PPU.ScreenHeight && o.HPos > -64 && o.HPos < 256)
++         counts[o.Priority & 3]++;
++   }
++
++   return (size_t)(p - out);
++}
++
+ size_t retro_get_memory_size(unsigned type)
+ {
+     size_t size;
+diff --git a/libretro/libretro.def b/libretro/libretro.def
+index 77094e7..e8505c4 100644
+--- a/libretro/libretro.def
++++ b/libretro/libretro.def
+@@ -36,4 +36,5 @@ retro_load_game_special
+ 
+ retro_get_region
+ retro_get_memory_data
+-retro_get_memory_size
+\ No newline at end of file
++retro_get_memory_size
++snes9x_re_ppu_state
+-- 
+2.51.0.windows.2
+

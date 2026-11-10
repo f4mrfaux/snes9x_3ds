@@ -206,10 +206,10 @@ bool impl3dsInitialize()
 	setDepthBufferByTex(GPU3DS.textures[SNES_MAIN].target, &GPU3DS.textures[SNES_DEPTH].tex);
 	setDepthBufferByTex(GPU3DS.textures[SNES_SUB].target, &GPU3DS.textures[SNES_DEPTH].tex);
 
-	// Second SNES screen, for the right eye's depth pass. It is the last thing
-	// to claim VRAM and the emulator runs fine without it, so a failed
-	// allocation only costs the per-layer 3D feature. A model without a 3D
-	// screen can never use it at all.
+	// Second SNES screen, for the right eye's depth pass. The emulator runs fine
+	// without it, so a failed allocation only costs the per-layer 3D feature. A
+	// model without a 3D screen can never use it at all. It is not the last thing
+	// to claim VRAM: img3dsAllocVramTextures runs later and its failure is fatal.
 	const SGPUTextureConfig screenRightTexConfig = { defaultTextureParams, SNES_MAIN_RIGHT, GPU_RGBA8, 512, 256 };
 	SGPUTexture *screenRight = &GPU3DS.textures[SNES_MAIN_RIGHT];
 
@@ -916,11 +916,17 @@ void impl3dsSceneRender(bool firstFrame, bool paused, bool pausedOverlay) {
 	// redrawn from it. That makes depth changes in the menu visible live.
 	// It also settles the shifts, which the strip below is measured from.
 	if (paused) {
+		bool wasActive = GPU3DSExt.stereo.active;
+
 		gpu3dsUpdateStereoLayerShiftsForPreview();
 
 		if (GPU3DSExt.stereo.active) {
 			gpu3dsDrawSnesScreenForEye(GFX_LEFT);
 			gpu3dsDrawSnesScreenForEye(GFX_RIGHT);
+		} else if (wasActive) {
+			// Depth just went off, and the screen still holds the left eye's
+			// shifted frame, which both eyes would show until resume.
+			gpu3dsDrawSnesScreenForEye(GFX_LEFT);
 		}
 	}
 

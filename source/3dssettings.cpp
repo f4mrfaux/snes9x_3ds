@@ -68,17 +68,77 @@ void settings3dsResetGlobalDefaults() {
     settings3DS.isDirty = true;
 }
 
+//---------------------------------------------------------
+// The depths a game starts from until someone tunes it, in
+// DEPTH3D_SLOT order. Positive is behind the screen.
+//
+// The front of the scene stays on the screen plane and everything
+// else recedes from it. Sprites stay level with the playfield they
+// stand on, and interfaces stay readable at the plane. In modes 2-7
+// the first background is also where Mode 7 takes its depth budget,
+// so it can't sit at zero there without flattening the plane.
+//
+// OBJ prio 3 and BG3 front stay equal in modes 0-1: Super Mario World
+// covers a hole in BG3 with priority 3 sprites on its maps, and any
+// difference between the two exposes the map through it.
+//
+// These are a starting point for a slider, not a claim about any
+// one game: the hardware only says what draws over what.
+//---------------------------------------------------------
+static const s8 depth3dDefaultDepths[DEPTH3D_FAMILY_COUNT][DEPTH3D_SLOT_COUNT] = {
+    // BG1     BG2     BG3     BG4     OBJ prio 0-3   BG3 front
+    {  0, 0,   2, 2,   4, 0,   5, 4,   2, 0, 0, 0,    0 },   // modes 0-1
+    {  3, 3,   5, 5,   0, 0,   0, 0,   4, 1, 1, 1,    0 },   // modes 2-7
+};
+
+//---------------------------------------------------------
+// Games that start from other depths, matched by internal name
+// like the per-game palette defaults below. A saved game config
+// still wins over these.
+//---------------------------------------------------------
+typedef struct {
+    const char *romName;
+    s8 depths[DEPTH3D_FAMILY_COUNT][DEPTH3D_SLOT_COUNT];
+} SDepth3DProfile;
+
+static const SDepth3DProfile depth3dProfiles[] = {
+    // Modes 0-1 follow rcmz's README order: distant pillars, then BG2, then the
+    // rain furthest back. They're capped at 5 so the edge crop stays at its
+    // default width; rcmz's 8 and 10 doubled it. The interface stays on the screen
+    // plane: in front of it, the crop cut ENERGY's "E" in one eye. The game sets
+    // BG3's priority bit, so the interface is on BG3 front.
+    { "Super Metroid", {
+        {  3, 0,   4, 0,   5, 0,   0, 0,  -1,-1,-1,-1,    0 },
+        {  3, 3,   5, 5,   0, 0,   0, 0,   4, 1, 1, 1,    0 },
+    }},
+    // Priority 3 sprite bars cover garbage at the sides of the race picture, which
+    // is on BG1, so OBJ prio 3 and BG1 prio 1 have to match. BG2 holds some sky and
+    // is free to recede.
+    { "Stunt Race FX", {
+        {  0, 0,   2, 2,   4, 0,   5, 4,   2, 0, 0, 0,    0 },
+        {  3, 0,   5, 5,   0, 0,   0, 0,   4, 1, 1, 0,    0 },
+    }},
+};
+
 void settings3dsResetGameDefaults() {
     settings3DS.Framerate = Setting::Framerate::UseRomRegion;
     settings3DS.PaletteFix = 0;
     settings3DS.PaletteDeferBgMask = 0;
     settings3DS.Mode7BilinearFilter = false;
 
-    settings3DS.Depth3DEnabled = false;
+    // The 3D slider is the switch: at zero nothing shifts, whatever this says.
+    settings3DS.Depth3DEnabled = true;
     settings3DS.Depth3DCropEdges = true;
     settings3DS.Depth3DFillGaps = true;
     settings3DS.Depth3DMode7Perspective = true;
-    memset(settings3DS.Depth3D, 0, sizeof(settings3DS.Depth3D));
+    memcpy(settings3DS.Depth3D, depth3dDefaultDepths, sizeof(settings3DS.Depth3D));
+
+    for (const auto &profile : depth3dProfiles) {
+        if (strcmp(Memory.ROMName, profile.romName) == 0) {
+            memcpy(settings3DS.Depth3D, profile.depths, sizeof(settings3DS.Depth3D));
+            break;
+        }
+    }
 
     memset(settings3DS.LayerEnabled, true, sizeof(settings3DS.LayerEnabled));
 

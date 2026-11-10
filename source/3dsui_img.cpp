@@ -127,18 +127,24 @@ bool img3dsAllocVramTextures() {
         u16 height;
         GPU_TEXCOLOR format;
         const char* defaultPng;
+        bool inVram;
     } assetConfigs[] = {
-        { UI_OVERLAY,   512, 256, GPU_RGBA8,  "romfs:/gfx/overlay.png" },
-        { UI_BG_GAME,   512, 256, GPU_RGB565, "romfs:/gfx/background_game_screen.png" },
-        { UI_BG_SECOND, 512, 256, GPU_RGB565, "romfs:/gfx/background_second_screen.png" }
+        { UI_OVERLAY,   512, 256, GPU_RGBA8,  "romfs:/gfx/overlay.png", true },
+        { UI_BG_GAME,   512, 256, GPU_RGB565, "romfs:/gfx/background_game_screen.png", true },
+        // In linear RAM: with the right eye's SNES screen there is no VRAM left for it.
+        { UI_BG_SECOND, 512, 256, GPU_RGB565, "romfs:/gfx/background_second_screen.png", false }
     };
 
     for (const auto& cfg : assetConfigs) {
         int idx = cfg.id - UI_TEXTURE_START;
         SGPUTexture *texture = &GPU3DS.textures[cfg.id];
 
-        if (!C3D_TexInitVRAM(&texture->tex, cfg.width, cfg.height, cfg.format)) {
-            log3dsWrite("[img3dsAllocVramTextures] C3D_TexInitVRAM failed for %s",
+        bool allocated = cfg.inVram
+            ? C3D_TexInitVRAM(&texture->tex, cfg.width, cfg.height, cfg.format)
+            : C3D_TexInit(&texture->tex, cfg.width, cfg.height, cfg.format);
+
+        if (!allocated) {
+            log3dsWrite("[img3dsAllocVramTextures] texture allocation failed for %s",
                 utils3dsTextureIDToString(cfg.id));
             return false;
         }

@@ -1,0 +1,66 @@
+diff --git a/source/shader_tiles.g.pica b/source/shader_tiles.g.pica
+index d10018e..a063b89 100644
+--- a/source/shader_tiles.g.pica
++++ b/source/shader_tiles.g.pica
+@@ -64,12 +64,14 @@
+     ;   x0,y1,tx0,ty1       x1,y1,tx1,ty1
+     ;
+     setemit 0                           ; top-left
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.xyz, r0.xyz
+     mov     outtex.xy, r1.xy
+     mov     outcol, r2
+     emit 
+ 
+     setemit 1                           ; top-right
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.xz, r3.xz
+     mov     outpos.y, r0.y
+     mov     outtex.x, r4.x
+@@ -78,6 +80,7 @@
+     emit 
+     
+     setemit 2, prim                     ; bottom-left
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.xz, r0.xz
+     mov     outpos.y, r3.y
+     mov     outtex.x, r1.x
+@@ -86,6 +89,7 @@
+     emit 
+ 
+     setemit 0, prim inv                 ; bottom-right
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.xyz, r3.xyz
+     mov     outtex.xy, r4.xy
+     mov     outcol, r2
+@@ -108,12 +112,14 @@ mode7:
+     add     r3.y, r0.y, r7.w            ; r3.y = r0.y + 1 scan line
+ 
+     setemit 0                           ; top-left
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.xyz, r0.xyz
+     mov     outtex.xy, r1.xy
+     mov     outcol, r2
+     emit 
+ 
+     setemit 1                           ; top-right
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.x, r3.x
+     mov     outpos.y, r0.y              ; mov outpos.yz, r0.yz won't work
+     mov     outpos.z, r0.z
+@@ -122,6 +128,7 @@ mode7:
+     emit 
+     
+     setemit 2, prim                     ; bottom-left
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.xz, r0.xz
+     mov     outpos.y, r3.y
+     mov     outtex.xy, r1.xy
+@@ -129,6 +136,7 @@ mode7:
+     emit 
+ 
+     setemit 0, prim inv                 ; bottom-right
++    mov     outpos.w, r7.y              ; Azahar does not keep w between emits
+     mov     outpos.x, r3.x
+     mov     outpos.y, r3.y
+     mov     outpos.z, r0.z

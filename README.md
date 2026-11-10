@@ -37,8 +37,8 @@ Feedback and bug reports are welcome.
 Each SNES plane can be placed at its own depth, so that a game's parallax
 backgrounds actually sit behind the playfield on the 3D screen.
 
-Open the pause menu and go to the **3D Depth** tab, then turn on **Per-Layer 3D
-Depth**.
+It is on by default, starting from general depths, and the 3D slider is the
+switch. To tune a game, open the pause menu and go to the **3D Depth** tab.
 
 ### One depth per priority, not per plane
 
@@ -358,20 +358,22 @@ Bundled binary provenance is documented in `makerom/BINARY_SOURCES.md`.
 
 ## Development and Contributions
 
-The work lives on `parallax3d`; `master` tracks upstream so the feature can be
-read as a diff against it. [GitLab](https://gitlab.com/rcmz/snes9x-3ds-parallax-3d)
-is the primary repository and carries the releases; the
-[GitHub](https://github.com/rcmz/snes9x-3ds-parallax-3d) repository is a mirror.
+**This branch is built directly on
+[rcmz's parallax3d](https://github.com/rcmz/snes9x-3ds-parallax-3d).** Its
+plane-and-priority depth slots, gap filling, edge cropping, scale-driven Mode 7
+perspective and slot previews are rcmz's work, and their commits are kept in this
+history under their own authorship. This branch adds starting depths so a game
+works before it is tuned, and carries rcmz's work forward onto current upstream.
+Problems found here should be reported here first, not to rcmz.
 
-Per-layer depth is not offered upstream: matbo87 has already reviewed this class
-of feature and declined it, and this fork deliberately takes the opposite design
-decision to the one he asked for -- explicit per-slot control instead of a
-default that needs no configuration. Bug reports and fixes for the base emulator
-belong [upstream](https://github.com/matbo87/snes9x_3ds), not here.
+Per-layer depth is not offered upstream: matbo87 has reviewed this class of
+feature and declined it for now. Please don't report stereo problems there. Bug
+reports and fixes for the base emulator belong
+[upstream](https://github.com/matbo87/snes9x_3ds).
 
-**Every line of this fork's per-layer depth work was written by Claude Opus 5.**
-See [Prior art](#prior-art): this is not the first attempt at stereoscopic 3D on
-this codebase.
+**The per-layer depth work here was written with AI assistance**, by rcmz and by
+f4mrfaux using Claude. See [Prior art](#prior-art): several people have worked on
+stereoscopic 3D on this codebase.
 
 AI note: I use AI assistants as part of my development workflow, including code review, debugging, planning, implementation and documentation. All changes are reviewed and adjusted by me before they are merged.
 
@@ -447,22 +449,30 @@ See [Known Issues](KNOWN_ISSUES.md#satellaview-bs-x-games) for details and per-g
 
 ## Prior art
 
-Per-layer stereoscopic 3D was attempted on this codebase before, by
-[f4mrfaux](https://github.com/f4mrfaux/snes9x_3ds), starting in February 2026 --
-three pull requests to upstream ([#40](https://github.com/matbo87/snes9x_3ds/pull/40),
-[#42](https://github.com/matbo87/snes9x_3ds/pull/42),
-[#60](https://github.com/matbo87/snes9x_3ds/pull/60)) and seven releases. That
-work derives depth **automatically** from the SNES' own compositing value, so it
-needs no configuration, with seven per-layer sliders as an override. Its Mode 7
-perspective stereo is where this fork's own came from: theirs scales one global
-offset by the scanline's position down the screen, in the geometry shader; this
-one scales the plane's own slot by the scale Mode 7 is drawing that scanline at,
-so a plane with no perspective in it stays flat instead of being ramped anyway.
+Per-layer stereoscopic 3D on this codebase has several independent lines of work:
 
-This fork takes the opposite decision on purpose: no automatic mode, thirteen
-explicit plane-and-priority slots set by hand per game. Nothing can then infer a
-plane's depth wrongly, at the cost of having to tune each game. Both designs are
-worth knowing about before choosing one.
+* **[f4mrfaux](https://github.com/f4mrfaux/snes9x_3ds)**, starting in February
+  2026, with three pull requests to upstream
+  ([#40](https://github.com/matbo87/snes9x_3ds/pull/40),
+  [#42](https://github.com/matbo87/snes9x_3ds/pull/42),
+  [#60](https://github.com/matbo87/snes9x_3ds/pull/60)) and seven releases. It
+  derived depth automatically from the SNES' compositing values, with per-layer
+  sliders as an override.
+* **[pianomanty (Tyler Sanders)](https://github.com/pianomanty/snes9x_3ds_3D)**, from
+  April 2026.
+* **[rcmz](https://github.com/rcmz/snes9x-3ds-parallax-3d)**, published from August 2026, built
+  without knowledge of the earlier work at first. It introduced thirteen explicit
+  plane-and-priority slots set by hand per game, on the view that nothing can then
+  infer a plane's depth wrongly. Its Mode 7 perspective drew on f4mrfaux's, and
+  replaced screen position with the scale each scanline is drawn at, so a plane
+  with no perspective stays flat. **This branch is built on rcmz's code.**
+* **[JorgeHSantana](https://github.com/JorgeHSantana/snes9x_3ds)**, from August 2026, with a
+  live editor and automatic per-screen profiles. No code from that fork is used
+  here.
+
+This branch keeps rcmz's slots and adds a starting value for each, so hand-set
+depth always wins and a game has something sensible before anyone tunes it. Those
+starting values are not derived per game and can be wrong for any given scene.
 
 ## License
 
@@ -475,7 +485,10 @@ See:
 ## Credits
 
 * The Snes9x team for the SNES emulator core, and the libretro Snes9x core maintainers for ongoing reference work
-* f4mrfaux, for the earlier stereoscopic 3D work on this codebase, and the PR threads that documented what does and does not survive review
+* rcmz, for [parallax3d](https://github.com/rcmz/snes9x-3ds-parallax-3d): the per-priority depth slots, gap filling, edge cropping, scale-driven Mode 7 perspective and slot previews this branch is built on
+* f4mrfaux, for the first shipped stereoscopic 3D work on this codebase, and the PR threads that documented what does and does not survive review
+* pianomanty (Tyler Sanders) and JorgeHSantana, for their own stereoscopic 3D work on this codebase, which shaped the discussion even where no code is shared
+* matbo87, for [the fork this is based on](https://github.com/matbo87/snes9x_3ds)
 * bubble2k, original author of [snes9x_3ds](https://github.com/bubble2k16/snes9x_3ds), for creating the excellent base this fork builds on
 * Wyatt-James for his [snes9x_3ds fork](https://github.com/Wyatt-James/snes9x_3ds); this fork adapts a few safety, audio and stability fixes from his work
 * ramzinouri's [snes9x_3ds fork](https://github.com/ramzinouri/snes9x_3ds) inspired the image border/background and theme support
